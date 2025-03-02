@@ -1,0 +1,33 @@
+ Taxonomy Data
+Data Type: taxonomy
+Primary Key: taxon_id
+Attributes
+
+    _version_ ( number)
+    cds_mean ( number)
+    cds_sd ( number)
+    core_families ( integer)
+    core_family_ids ( array of strings)
+    description ( string)
+    division ( string)
+    genetic_code ( integer)
+    genome_count ( integer)
+    genome_length_mean ( number)
+    genome_length_sd ( number)
+    genomes ( integer)
+    genomes_f ( string)
+    hypothetical_cds_ratio_mean ( number)
+    hypothetical_cds_ratio_sd ( number)
+    lineage ( string)
+    lineage_ids ( array of integers)
+    lineage_names ( array of strings)
+    lineage_ranks ( array of strings)
+    other_names ( array of case insensitive strings)
+    parent_id ( integer)
+    plfam_cds_ratio_mean ( number)
+    plfam_cds_ratio_sd ( number)
+    taxon_id * ( string)
+    taxon_id_i ( integer)
+    taxon_name ( case insensitive string)
+    taxon_rank ( string)
+

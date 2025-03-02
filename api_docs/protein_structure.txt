@@ -1,0 +1,30 @@
+ Protein Structure Data
+Data Type: protein_structure
+Primary Key: pdb_id
+Attributes
+
+    alignments ( array of strings)
+    authors ( array of strings)
+    date_inserted ( date)
+    date_modified ( date)
+    feature_id ( string)
+    file_path ( string)
+    gene ( array of strings)
+    genome_id ( string)
+    institution ( string)
+    method ( array of strings)
+    organism_name ( array of case insensitive strings)
+    patric_id ( string)
+    pdb_id * ( string)
+    pmid ( array of strings)
+    product ( array of strings)
+    release_date ( date)
+    resolution ( string)
+    sequence ( array of strings)
+    sequence_md5 ( array of strings)
+    taxon_id ( array of integers)
+    taxon_lineage_ids ( array of strings)
+    taxon_lineage_names ( array of strings)
+    title ( case insensitive string)
+    uniprotkb_accession ( array of strings)
+

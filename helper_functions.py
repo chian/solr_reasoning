@@ -25,7 +25,7 @@ def query_local_llm(client, user_query, model="deepseek-ai/DeepSeek-R1"):
 
     return response.choices[0].message.content 
 
-def parse_last_command_output_with_llm(terminal_output_lines):
+def parse_last_command_output_with_llm(terminal_output_lines, client):
     """
     Takes in the command output and uses an LLM to extract relevant information.
 
@@ -38,18 +38,18 @@ def parse_last_command_output_with_llm(terminal_output_lines):
     output_str = "\n".join(terminal_output_lines)
 
     prompt = f"""You are an expert in bioinformatics. Below is the raw 
-output from a p3-tools command execution:
+        output from a solr query execution:
 
-{output_str}
+        {output_str}
 
-Your task is to extract and return the relevant information from the output.
+        Your task is to extract and return the relevant information from the output.
 
-Output:
-"""
+        Output:
+        """
     print("Parsing Command Output with LLM...")
     return query_local_llm(client, prompt)
 
-def classify_last_command_output_with_llm(observation_lines, user_query):
+def classify_last_command_output_with_llm(observation_lines, user_query, client):
     """
     Uses the LLM to classify the output of the last command.
     
@@ -82,7 +82,7 @@ def classify_last_command_output_with_llm(observation_lines, user_query):
     
     return query_local_llm(client, prompt)
 
-def justify_solution_with_llm(observation_lines, user_query, llm_response):
+def justify_solution_with_llm(observation_lines, user_query, llm_response, client):
     """
     Uses the LLM to justify the solution based on the command output.
     
@@ -112,7 +112,7 @@ def justify_solution_with_llm(observation_lines, user_query, llm_response):
     
     return query_local_llm(client, prompt)
 
-def derive_solution_with_llm(classification, justification):
+def derive_solution_with_llm(classification, justification, client):
     """
     Uses the LLM to derive a solution based on the classification and justification.
     

@@ -1,0 +1,35 @@
+ Protein Feature Data
+Data Type: protein_feature
+Primary Key: id
+Attributes
+
+    aa_sequence_md5 ( string)
+    classification ( array of strings)
+    comments ( array of case insensitive strings)
+    date_inserted ( date)
+    date_modified ( date)
+    description ( case insensitive string)
+    e_value ( string)
+    end ( integer)
+    evidence ( string)
+    feature_id ( string)
+    feature_type ( string)
+    gene ( string)
+    genome_id ( string)
+    genome_name ( case insensitive string)
+    id * ( string)
+    interpro_description ( case insensitive string)
+    interpro_id ( string)
+    length ( integer)
+    patric_id ( string)
+    product ( case insensitive string)
+    publication ( array of strings)
+    refseq_locus_tag ( string)
+    score ( number)
+    segments ( array of strings)
+    sequence ( string)
+    source ( string)
+    source_id ( string)
+    start ( integer)
+    taxon_id ( integer)
+

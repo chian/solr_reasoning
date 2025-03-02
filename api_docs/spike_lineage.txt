@@ -1,0 +1,20 @@
+ Spike Lineage Data
+Data Type: spike_lineage
+Primary Key: id
+Attributes
+
+    _version_ ( number)
+    country ( case insensitive string)
+    date_inserted ( date)
+    date_modified ( date)
+    growth_rate ( number)
+    id * ( string)
+    lineage ( string)
+    lineage_count ( integer)
+    lineage_of_concern ( string)
+    month ( string)
+    prevalence ( number)
+    region ( case insensitive string)
+    sequence_features ( array of strings)
+    total_isolates ( integer)
+

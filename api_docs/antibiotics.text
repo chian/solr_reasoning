@@ -1,0 +1,27 @@
+ Antibiotics Data
+
+Information about antibiotics, inlcuding their chemical and physical properties, pharmacology, and mechanism of action.
+Data Type: antibiotics
+Primary Key: pubchem_cid
+Attributes
+
+    _version_ ( number)
+    antibiotic_name ( case insensitive string)
+    atc_classification ( array of strings)
+    canonical_smiles ( string)
+    cas_id ( string)
+    date_inserted ( date)
+    date_modified ( date)
+    description ( array of strings)
+    drugbank_interactions ( array of strings)
+    inchi_key ( string)
+    isomeric_smiles ( string)
+    mechanism_of_action ( array of strings)
+    molecular_formula ( string)
+    molecular_weight ( string)
+    pharmacological_classes ( array of strings)
+    pharmacology ( array of strings)
+    pubchem_cid * ( string)
+    pubchem_cid_i ( integer)
+    synonyms ( array of case insensitive strings)
+

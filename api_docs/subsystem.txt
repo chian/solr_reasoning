@@ -1,0 +1,30 @@
+ Subsystem Data
+Data Type: subsystem
+Primary Key: id
+Attributes
+
+    _version_ ( number)
+    active ( string)
+    class ( string)
+    date_inserted ( date)
+    date_modified ( date)
+    feature_id ( string)
+    gene ( string)
+    genome_id ( string)
+    genome_name ( case insensitive string)
+    id * ( string)
+    owner ( string)
+    patric_id ( string)
+    product ( string)
+    public ( boolean)
+    refseq_locus_tag ( string)
+    role_id ( string)
+    role_name ( string)
+    subclass ( string)
+    subsystem_id ( string)
+    subsystem_name ( string)
+    superclass ( string)
+    taxon_id ( integer)
+    user_read ( array of strings)
+    user_write ( array of strings)
+

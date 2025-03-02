@@ -1,0 +1,27 @@
+ Specialty Gene Ref Data
+Data Type: sp_gene_ref
+Primary Key: id
+Attributes
+
+    _version_ ( number)
+    antibiotics ( array of strings)
+    antibiotics_class ( string)
+    assertion ( string)
+    classification ( array of strings)
+    date_inserted ( date)
+    date_modified ( date)
+    function ( string)
+    gene_id ( string)
+    gene_name ( string)
+    genus ( string)
+    gi ( string)
+    id * ( string)
+    locus_tag ( string)
+    organism ( string)
+    pmid ( array of strings)
+    product ( string)
+    property ( string)
+    source ( string)
+    source_id ( string)
+    species ( string)
+

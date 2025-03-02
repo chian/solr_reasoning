@@ -1,0 +1,13 @@
+ Gene Ontology Ref Data
+Data Type: gene_ontology_ref
+Primary Key: go_id
+Attributes
+
+    _version_ ( number)
+    date_inserted ( date)
+    date_modified ( date)
+    definition ( string)
+    go_id * ( string)
+    go_name ( string)
+    ontology ( string)
+

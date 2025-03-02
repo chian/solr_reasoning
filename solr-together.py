@@ -46,6 +46,10 @@ with open('cot_template_text.txt','r') as i:
 
 CoT_template = PromptTemplate.from_template(textwrap.dedent(cot_template_text))
 
+def remove_think_tags(text: str) -> str:
+    #"""<think>...</think>"""
+    return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+
 def llm_for_actionable_commands(client, user_query, previous_attempts=None):
     """
     Generates commands using the LLM based on the user query and previous attempts.
@@ -84,11 +88,11 @@ def llm_for_actionable_commands(client, user_query, previous_attempts=None):
                     3. Try a different strategy if the previous ones weren't successful
                     4. Include your reasoning in <think> tags and your final commands in <action> tags
                 """
-        else:
-            prompt = CoT_template.format(user_query=user_query)
+    else:
+        prompt = CoT_template.format(user_query=user_query)
         
-        response = query_local_llm(client, prompt)
-        return response, prompt
+    response = query_local_llm(client, prompt)
+    return response, prompt
 
 def execute_command(command, llm_response_file=None):
     """
@@ -183,8 +187,11 @@ def main():
     # Create the main query_results directory if it doesn't exist
     main_results_dir = "query_results"
     os.makedirs(main_results_dir, exist_ok=True)
-    
+    count = 0
     for user_query in queries:
+        if count == 1:
+            sys.exit()
+        count += 1
         try:
             # Create a sanitized subfolder name based on the query
             query_subfolder = sanitize_filename(user_query)
@@ -290,9 +297,12 @@ def main():
                         # Normal classification through LLM
                         classification_raw = classify_last_command_output_with_llm(
                             observation_lines,
-                            user_query
+                            user_query,
+                            client
                         )
                         classification = remove_think_tags(classification_raw)
+                        import pdb
+                        pdb.set_trace()
                         
                         # 3) Decide if success based on classification
                         cmd_success = ("SUCCESS" in classification.upper() 
@@ -310,7 +320,8 @@ def main():
                         justification_raw = justify_solution_with_llm(
                             observation_lines,
                             user_query,
-                            response
+                            response,
+                            client
                         )
                         justification = remove_think_tags(justification_raw)
                     
@@ -321,7 +332,7 @@ def main():
                     # 4) Only derive a solution if this is successful
                     if cmd_success:
                         logging.info("Command successful! Deriving solution...")
-                        solution_raw = derive_solution_with_llm(classification, justification)
+                        solution_raw = derive_solution_with_llm(classification, justification, client)
                         solution = remove_think_tags(solution_raw)
                         
                         # Write the solution to the trace file

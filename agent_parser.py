@@ -16,10 +16,11 @@ def sanitize_filename(filename):
     # Replace problematic characters with underscores
     invalid_chars = r'[<>:"/\\|?*\n\r\t]'
     sanitized = re.sub(invalid_chars, '_', filename)
+    sanitized = sanitized.replace(' ','_')
     
     # Truncate if too long (max 100 chars)
     if len(sanitized) > 100:
-        sanitized = sanitized[:97] + '...'
+        sanitized = sanitized[:97]
     
     # Ensure it's not empty
     if not sanitized or sanitized.isspace():
