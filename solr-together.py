@@ -301,8 +301,6 @@ def main():
                             client
                         )
                         classification = remove_think_tags(classification_raw)
-                        import pdb
-                        pdb.set_trace()
                         
                         # 3) Decide if success based on classification
                         cmd_success = ("SUCCESS" in classification.upper() 
