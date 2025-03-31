@@ -1,0 +1,5 @@
+# User Query
+Retrieve all virulence factors in a clinical Escherichia coli isolate.
+
+# Attempt 1
+

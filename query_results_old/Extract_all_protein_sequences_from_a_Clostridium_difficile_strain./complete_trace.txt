@@ -1,0 +1,5 @@
+# User Query
+Extract all protein sequences from a Clostridium difficile strain.
+
+# Attempt 1
+

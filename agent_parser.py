@@ -1,6 +1,7 @@
 import re
 import logging
 import os,sys,json
+from helper_functions import query_local_llm
 
 # Add the sanitize_filename function at the top of the file, before main()
 def sanitize_filename(filename):
@@ -28,10 +29,204 @@ def sanitize_filename(filename):
     
     return sanitized
 
+def is_valid_json(json_str):
+    """
+    Validates if the provided string is a valid JSON.
+
+    Args:
+        json_str (str): The JSON string to validate.
+
+    Returns:
+        bool: True if valid JSON, False otherwise.
+    """
+    try:
+        json.loads(json_str)
+        return True
+    except json.JSONDecodeError:
+        print(f"Invalid JSON: {json_str}")
+        return False
+
+def extract_json_elements(s):
+    """
+    Generator to extract JSON elements from a string.
+    
+    Args:
+        s (str): The input string containing JSON elements.
+    
+    Yields:
+        object: Parsed JSON objects or arrays.
+    """
+    decoder = json.JSONDecoder()
+    idx = 0
+    n = len(s)
+    while idx < n:
+        try:
+            obj, idx_new = decoder.raw_decode(s, idx)
+            yield obj
+            idx = idx_new
+        except json.JSONDecodeError:
+            # Move to the next character if no valid JSON is found
+            idx += 1
+
+def extract_commands_from_code_blocks(content):
+    """
+    Extracts commands from markdown-style code blocks.
+    
+    Args:
+        content (str): The content to extract commands from.
+        
+    Returns:
+        list: A list of extracted commands.
+    """
+    commands = []
+    
+    # Look for ```bash or ```shell style code blocks
+    code_block_pattern = re.compile(r'```(?:bash|shell)?\s*(.*?)\s*```', re.DOTALL)
+    code_blocks = code_block_pattern.findall(content)
+    
+    for block in code_blocks:
+        # Split by lines and filter out empty ones
+        lines = [line.strip() for line in block.split('\n') if line.strip()]
+        commands.extend(lines)
+    
+    return commands
+
+def extract_direct_commands(content):
+    """
+    Attempts to extract commands directly when no JSON structure is found.
+    Looks for patterns like 'curl', 'wget', etc. at the start of lines.
+    
+    Args:
+        content (str): The content to extract commands from.
+        
+    Returns:
+        list: A list of extracted commands.
+    """
+    commands = []
+    
+    # Common command line tools to look for
+    command_prefixes = [
+        'curl', 'wget', 'git', 'python', 'pip', 'npm', 'node', 
+        'cat', 'ls', 'cd', 'mkdir', 'rm', 'cp', 'mv',
+        'grep', 'find', 'sed', 'awk', 'bash', 'ssh',
+        'docker', 'kubectl', 'apt', 'yum', 'brew'
+    ]
+    
+    # Split by lines and look for lines starting with common commands
+    lines = content.split('\n')
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+            
+        # Check if line starts with a common command
+        for prefix in command_prefixes:
+            if stripped.startswith(prefix + ' ') or stripped == prefix:
+                commands.append(stripped)
+                break
+                
+    return commands
+
+def extract_commands_with_fallbacks(content, logging):
+    """
+    Extract commands using multiple strategies with fallbacks.
+    
+    Args:
+        content (str): The content to extract commands from.
+        logging: The logging object.
+        
+    Returns:
+        list: A list of extracted commands.
+    """
+    commands = []
+    
+    # Strategy 1: Try standard JSON parsing
+    if is_valid_json(content):
+        logging.debug("Using standard JSON parsing")
+        json_data = json.loads(content)
+        if isinstance(json_data, list):
+            for item in json_data:
+                if isinstance(item, dict) and "action_input" in item:
+                    commands.append(item["action_input"])
+        elif isinstance(json_data, dict) and "action_input" in json_data:
+            commands.append(json_data["action_input"])
+            
+    # Strategy 2: Try parsing JSON line by line
+    if not commands:
+        logging.debug("Trying JSON line-by-line parsing")
+        for json_element in extract_json_elements(content):
+            if isinstance(json_element, list):
+                for item in json_element:
+                    if isinstance(item, dict) and "action_input" in item:
+                        commands.append(item["action_input"])
+            elif isinstance(json_element, dict) and "action_input" in json_element:
+                commands.append(json_element["action_input"])
+                
+    # Strategy 3: Look for markdown code blocks
+    if not commands:
+        logging.debug("Looking for code blocks")
+        code_block_commands = extract_commands_from_code_blocks(content)
+        if code_block_commands:
+            commands.extend(code_block_commands)
+            
+    # Strategy 4: Direct command extraction
+    if not commands:
+        logging.debug("Trying direct command extraction")
+        direct_commands = extract_direct_commands(content)
+        if direct_commands:
+            commands.extend(direct_commands)
+            
+    return commands
+
+def extract_commands_with_llm(content, logging):
+    """
+    Use an LLM to extract commands when other parsing methods fail.
+    This is a last resort fallback strategy.
+    
+    Args:
+        content (str): The content to extract commands from.
+        logging: The logging object.
+        
+    Returns:
+        list: A list of extracted commands.
+    """
+    logging.debug("Attempting command extraction using LLM")
+    
+    # Import here to avoid circular dependency
+    from solr_together import together_client
+    
+    prompt = """Extract executable commands from the following text. 
+Return only the actual commands that should be executed, one per line.
+Do not include any explanations or markdown formatting.
+
+Text to extract from:
+{content}"""
+
+    try:
+        # Call LLM with the prompt
+        response = query_local_llm(together_client, prompt.format(content=content))
+        
+        # Remove thinking tags and get the solution
+        solution = remove_think_tags(response)
+        
+        # Split into commands
+        commands = [cmd.strip() for cmd in solution.split('\n') if cmd.strip()]
+        
+        if commands:
+            logging.debug(f"LLM extracted {len(commands)} commands")
+            return commands
+            
+    except Exception as e:
+        logging.error(f"Error during LLM command extraction: {str(e)}")
+        
+    return []
+
+
 def parse_commands(response_to_call, logging):
     """
     Parses the commands from the given response.
     Gives preference to <action> tags and falls back to <think> tags if no commands are found in <action>.
+    Uses multiple fallback strategies for more robust extraction.
 
     Args:
         response_to_call (str): The response containing commands.
@@ -63,31 +258,12 @@ def parse_commands(response_to_call, logging):
             content = content.strip()
             if not content:
                 continue
-            logging.debug("Processing JSON content within <action> tags.")
+            logging.debug("Processing content within <action> tags.")
             
-            # Try to parse as JSON
-            try:
-                # First try as a complete JSON object or array
-                json_data = json.loads(content)
-                if isinstance(json_data, list):
-                    for item in json_data:
-                        if isinstance(item, dict) and "action_input" in item:
-                            commands.append(item["action_input"])
-                            logging.debug(f"Extracted command from JSON array: {item['action_input']}")
-                elif isinstance(json_data, dict) and "action_input" in json_data:
-                    commands.append(json_data["action_input"])
-                    logging.debug(f"Extracted command from JSON object: {json_data['action_input']}")
-            except json.JSONDecodeError:
-                # If not a complete JSON, try to extract JSON objects line by line
-                for json_element in extract_json_elements(content):
-                    if isinstance(json_element, list):
-                        for item in json_element:
-                            if isinstance(item, dict) and "action_input" in item:
-                                commands.append(item["action_input"])
-                                logging.debug(f"Extracted command from JSON array element: {item['action_input']}")
-                    elif isinstance(json_element, dict) and "action_input" in json_element:
-                        commands.append(json_element["action_input"])
-                        logging.debug(f"Extracted command from JSON object element: {json_element['action_input']}")
+            # Use the enhanced extraction with fallbacks
+            action_commands = extract_commands_with_fallbacks(content, logging)
+            if action_commands:
+                commands.extend(action_commands)
 
         # If commands found in <action>, return them without processing <think>
         if commands:
@@ -102,37 +278,38 @@ def parse_commands(response_to_call, logging):
             content = content.strip()
             if not content:
                 continue
-            logging.debug("Processing JSON content within <think> tags.")
+            logging.debug("Processing content within <think> tags.")
             
-            # Try to parse as JSON
-            try:
-                # First try as a complete JSON object or array
-                json_data = json.loads(content)
-                if isinstance(json_data, list):
-                    for item in json_data:
-                        if isinstance(item, dict) and "action_input" in item:
-                            commands.append(item["action_input"])
-                            logging.debug(f"Extracted command from JSON array: {item['action_input']}")
-                elif isinstance(json_data, dict) and "action_input" in json_data:
-                    commands.append(json_data["action_input"])
-                    logging.debug(f"Extracted command from JSON object: {json_data['action_input']}")
-            except json.JSONDecodeError:
-                # If not a complete JSON, try to extract JSON objects line by line
-                for json_element in extract_json_elements(content):
-                    if isinstance(json_element, list):
-                        for item in json_element:
-                            if isinstance(item, dict) and "action_input" in item:
-                                commands.append(item["action_input"])
-                                logging.debug(f"Extracted command from JSON array element: {item['action_input']}")
-                    elif isinstance(json_element, dict) and "action_input" in json_element:
-                        commands.append(json_element["action_input"])
-                        logging.debug(f"Extracted command from JSON object element: {json_element['action_input']}")
+            # Use the enhanced extraction with fallbacks
+            think_commands = extract_commands_with_fallbacks(content, logging)
+            if think_commands:
+                commands.extend(think_commands)
+
+        # If still no commands found but we have code blocks directly in the response (outside tags)
+        if not commands:
+            logging.debug("Looking for code blocks outside of tags as last resort.")
+            outside_commands = extract_commands_from_code_blocks(response_to_call)
+            if outside_commands:
+                commands.extend(outside_commands)
+                
+            # Direct command extraction as very last resort
+            if not commands:
+                outside_direct_commands = extract_direct_commands(response_to_call)
+                if outside_direct_commands:
+                    commands.extend(outside_direct_commands)
+                    
+                # Final fallback: Try LLM-based extraction
+                if not commands:
+                    logging.debug("Attempting LLM-based command extraction as final fallback")
+                    llm_commands = extract_commands_with_llm(response_to_call, logging)
+                    if llm_commands:
+                        commands.extend(llm_commands)
 
         if not commands:
-            logging.error("No valid commands found in the JSON content.")
+            logging.error("No valid commands found in the response.")
             logging.error(f"Initial input received (response_to_call): {response_to_call}")
             return []  # Continue returning empty list instead of exiting
-
+    
         logging.debug(f"Final extracted commands: {commands}")
         return commands
 
@@ -140,28 +317,6 @@ def parse_commands(response_to_call, logging):
         logging.exception(f"Unexpected error while parsing commands: {ex}")
         logging.error(f"Initial input received (response_to_call): {response_to_call}")
         return []  # Continue returning empty list instead of exiting
-
-def extract_json_elements(s):
-    """
-    Generator to extract JSON elements from a string.
-    
-    Args:
-        s (str): The input string containing JSON elements.
-    
-    Yields:
-        object: Parsed JSON objects or arrays.
-    """
-    decoder = json.JSONDecoder()
-    idx = 0
-    n = len(s)
-    while idx < n:
-        try:
-            obj, idx_new = decoder.raw_decode(s, idx)
-            yield obj
-            idx = idx_new
-        except json.JSONDecodeError:
-            # Move to the next character if no valid JSON is found
-            idx += 1
 
 def test_parse_commands(logging):
     """Unit tests for parse_commands function."""

@@ -72,12 +72,19 @@ def classify_last_command_output_with_llm(observation_lines, user_query, client)
     {observation_text}
     ```
     
-    Please classify this output as one of:
-    - SUCCESS: The command executed successfully and provides useful information to answer the query
-    - PARTIAL SUCCESS: The command executed but only partially answers the query
-    - FAILURE: The command failed to execute or did not provide useful information
+    First, analyze the user's query to understand:
+    1. What type of data they're asking for
+    2. Whether they specified any quantity requirements
+    3. Whether they specified any additional criteria beyond the basic request
     
-    Provide your classification and a brief explanation.
+    Then classify the output based on these rules:
+    1. SUCCESS: The command returned data that matches the basic type and criteria requested in the query
+    2. PARTIAL SUCCESS: The command returned data but it doesn't match the type or criteria from the query
+    3. FAILURE: The command failed to execute or returned no valid data
+    
+    Important: Do not add requirements that weren't in the original query. If the user asks for "features" without specifying quantity, returning one feature is a complete success.
+    
+    Provide your classification and a brief explanation that references the specific requirements from the user's query.
     """
     
     return query_local_llm(client, prompt)

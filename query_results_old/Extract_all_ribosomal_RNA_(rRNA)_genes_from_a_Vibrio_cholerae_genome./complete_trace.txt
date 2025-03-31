@@ -1,0 +1,5 @@
+# User Query
+Extract all ribosomal RNA (rRNA) genes from a Vibrio cholerae genome.
+
+# Attempt 1
+

@@ -1,0 +1,5 @@
+# User Query
+Retrieve all hypothetical proteins in a recently sequenced Bacillus subtilis genome.
+
+# Attempt 1
+

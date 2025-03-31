@@ -1,0 +1,5 @@
+# User Query
+Identify orthologous genes between Escherichia coli and Shigella flexneri.
+
+# Attempt 1
+
