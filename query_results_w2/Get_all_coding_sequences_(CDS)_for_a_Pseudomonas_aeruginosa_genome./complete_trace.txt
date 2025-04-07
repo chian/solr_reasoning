@@ -1,0 +1,608 @@
+# User Query
+Get all coding sequences (CDS) for a Pseudomonas aeruginosa genome.
+
+# Attempt 1
+
+## Original Superprompt (before enhancement)
+Given the user's initial prompt "{user prompt: Get all coding sequences (CDS) for a Pseudomonas aeruginosa genome. }" enhance it. 
+
+CRITICAL FORMAT REQUIREMENTS:
+- EVERY command must be in <action> tags
+- EVERY command must use ONLY these fields:
+  - "action": "bash"
+  - "action_input": curl [rest of command here]
+- Multiple commands must be in an array
+- NO other fields or formats are allowed
+- NO explanatory fields in the JSON
+- NO additional JSON structure
+- USE FEW-SHOT PROMPTING TECHNIQUES
+- DO NOT SKIP STEPS
+- DO NOT USE ESEARCH OR NCBI OR ANY OTHER TOOLS
+- USE ONLY CURL REQUESTS TO THE BV-BRC ENDPOINT BELOW
+
+EXAMPLES OF CORRECT FORMAT:
+
+Input: "List all Pseudomonas aeruginosa genome IDs."
+Output:
+<action>
+{
+    "action": "bash",
+    "action_input": "curl -s \"https://www.bv-brc.org/api/genome/?and(eq(genus,Pseudomonas),eq(species,aeruginosa))&select(genome_id)\""
+}
+</action>
+
+Input: "Get features from genome 287.3167 that are proteins"
+Output:
+<action>
+{
+    "action": "bash",
+    "action_input": "curl -L \"https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\""
+}
+</action>
+
+1. Start with clear, precise instructions placed at the beginning of the prompt 
+so that you generate fast-running curl commands against the bv-brc endpoint that 
+demonstrates the solution approach while limiting the output size. 
+2. Include specific details about the desired context, outcome, length, format, 
+and style. When generating your chain-of-thought (<think>), keep it brief. Then 
+produce the final commands in <action> tags. 
+3. Use appropriate leading words or phrases to guide the desired output, 
+especially if code generation is involved. 
+4. Avoid any vague or imprecise language. 
+5. Rather than only stating what not to do, provide guidance on what should be 
+done instead. Remember to ensure the revised prompt remains true to the user's 
+original intent. 
+6. Explicitly include instructions to include the <action> </action> format, 
+not just examples. State the format to be followed and then follow it. 
+
+Here is some information you can use to help you form the prompt. The base url 
+for the solr endpoints is https://bv-brc.org/api, with the collections listed below:
+
+    Genome data can be retrieved from the genome collection.
+    Antibiotic resistance data can be retrieved from the genome_amr collection.
+    Gene feature data can be retrieved from the genome_feature collection.
+    Protein family reference data can be retrieved from the protein_family_ref collection.
+    Protein feature data can be retrieved from the protein_feature collection.
+    Protein structure data can be retrieved from the protein_structure collection.
+    Epitope data can be retrieved from the epitope collection.
+    Epitope assay data can be retrieved from the epitope_assay collection.
+    Bioset data can be retrieved from the bioset collection.
+    Bioset result data can be retrieved from the bioset_result collection.
+    Enzyme class reference data can be retrieved from the enzyme_class_ref collection.
+    Experiment data can be retrieved from the experiment collection.
+    Feature sequence data can be retrieved from the feature_sequence collection.
+    Gene ontology reference data can be retrieved from the gene_ontology_ref collection.
+    Genome sequence data can be retrieved from the genome_sequence collection.
+    ID reference data can be retrieved from the id_ref collection.
+    Miscellaneous NIAID SGC data can be retrieved from the misc_niaid_sgc collection.
+    Pathway data can be retrieved from the pathway collection.
+    Pathway reference data can be retrieved from the pathway_ref collection.
+    Protein-protein interaction data can be retrieved from the ppi collection.
+    Protein family reference data can be retrieved from the protein_family_ref collection.
+    Protein feature data can be retrieved from the protein_feature collection.
+    Protein structure data can be retrieved from the protein_structure collection.
+    Sequence feature data can be retrieved from the sequence_feature collection.
+    Sequence feature VT data can be retrieved from the sequence_feature_vt collection.
+    Serology data can be retrieved from the serology collection.
+    Sp_gene data can be retrieved from the sp_gene collection.
+    Sp_gene reference data can be retrieved from the sp_gene_ref collection.
+    Spike lineage data can be retrieved from the spike_lineage collection.
+    Spike variant data can be retrieved from the spike_variant collection.
+    Strain data can be retrieved from the strain collection.
+    Structured assertion data can be retrieved from the structured_assertion collection.
+    Subsystem data can be retrieved from the subsystem collection.
+    Subsystem reference data can be retrieved from the subsystem_ref collection.
+    Surveillance data can be retrieved from the surveillance collection.
+    Taxonomy data can be retrieved from the taxonomy collection.
+
+    To query an endpoint, it's added to the url: https://bv-brc.org/api/genome
+    solr query parameters are added after, for example: https://bv-brc.org/api/genome/?eq(genome_id,<genome_id>)&select(genome_id,genome_name)&limit(2)
+    multiple conditions conditions can be specified using 'and' and 'or', for example: https://bv-brc.org/api/genome/?and(eq(genome_id,<genome_id>),eq(genus,<genus>))
+
+Other tips:
+    - Use `limit(1)` (or fewer) to cap the result size
+    - Use a small set of columns (e.g., `select(feature_id,product))` to avoid retrieving 
+    unneeded data.
+    - Avoid overly complex filters or joins unless absolutely necessary.
+    - Try to break down commands into single actions at a time so that the error messages are informative. Use intermediate files if necessary to breaking down steps.
+
+    Examples:
+
+    User Query: List all genomes associated with *Escherichia coli*. 
+    Response:
+    <think>
+        First, identify the relevant commands needed to complete the task and get the associated documentation. 
+
+        The genome collection can be used here, looking at documentation:
+        ```
+        bash
+        cat api_docs/genome.txt
+        ```
+
+        To target *Escherichia coli*, we use filters for the genus and species fields. Genomes can be retrieved from the genome collection.
+
+        The final command is:
+        ```
+        bash
+        curl -L -H "Accept: application/json" 'https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia),eq(species,coli))&limit(1)'
+        ```
+    </think>
+
+    <action>
+       [
+       {
+            "action": "bash",
+            "action_input": "cat api_docs/genome.txt"
+       },
+       {
+           "action": "bash",
+           "action_input": "curl -L \'https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\'"
+       }
+       ]
+    </action>
+
+
+## Enhanced Prompt from o1-preview
+To retrieve all coding sequences (CDS) for a *Pseudomonas aeruginosa* genome, please generate fast-running `curl` commands against the BV-BRC endpoint that demonstrate the solution approach while limiting the output size. Follow these steps:
+
+1. **Retrieve a genome ID** for *Pseudomonas aeruginosa* by querying the `genome` collection using filters for `genus` and `species`. Limit the output to one result to ensure the command runs quickly.
+
+2. **Retrieve CDS features** from the `genome_feature` collection by filtering for the obtained `genome_id` and setting `feature_type` to `CDS`. Again, limit the output to one result.
+
+3. **Select specific fields** to include in the output by using the `select` parameter (e.g., `feature_id`, `product`, `na_sequence_md5`).
+
+Use the following format for the commands:
+
+```plaintext
+<action>
+[
+  {
+    "action": "bash",
+    "action_input": "curl [first command here]"
+  },
+  {
+    "action": "bash",
+    "action_input": "curl [second command here]"
+  }
+]
+</action>
+```
+
+**Important format requirements:**
+
+- Every command must be within `<action>` tags.
+- Use only the fields `"action": "bash"` and `"action_input": "curl [command]"`.
+- Multiple commands must be in an array.
+- No other fields or formats are allowed.
+- Do not include any explanatory text or additional JSON structure.
+
+## LLM Response
+<think>
+Okay, let's tackle this problem step by step. The user wants to retrieve CDS for a Pseudomonas aeruginosa genome using BV-BRC's API with curl commands. The steps are to first get a genome ID, then use that to get CDS features, each time limiting output to one result and selecting specific fields.
+
+First, I need to figure out the correct API endpoints. The first step is querying the genome collection. The BV-BRC API documentation probably has a genome endpoint. The filters should be genus=Pseudomonas and species=aeruginosa. Also, limit=1 to get just one genome ID. The select parameter here might not be necessary unless they want specific fields, but the user didn't mention that for the first step. So the first curl command would be something like:
+
+curl "https://www.bv-brc.org/api/genome/?http_accept=application/json&filter=eq(genus,Pseudomonas),eq(species,aeruginosa)&limit=1"
+
+Wait, but the user might want to select certain fields in the first step? The problem says in step 1 to retrieve the genome ID, so maybe the select is just genome_id. But the user didn't specify selecting fields for step 1, only for step 3. So maybe the first command doesn't need a select parameter. But the output might include more data, but since we're limiting to 1, it's okay.
+
+Next, once we have the genome_id from the first command, the second step is to query the genome_feature collection. The filters here would be eq(genome_id, [the_id]) and eq(feature_type, CDS). Also, limit=1 again. Then select the fields feature_id, product, na_sequence_md5. So the second command would be:
+
+curl "https://www.bv-brc.org/api/genome_feature/?http_accept=application/json&filter=eq(genome_id,THE_ID),eq(feature_type,CDS)&limit=1&select(feature_id,product,na_sequence_md5)"
+
+Wait, the select parameter syntax might be different. In some APIs, you can specify select as a comma-separated list. So maybe &select=feature_id,product,na_sequence_md5.
+
+Putting it all together, the first command gets the genome ID, the second uses that ID to get CDS features. The user wants the commands in the specified format with action and action_input as bash curl commands. Also, the output must be in the exact structure with the array of actions inside <action> tags.
+
+I need to make sure that the URLs are correctly formatted with the parameters. Also, ensure that the quotes are properly escaped if needed, but in the bash commands, using double quotes around the URL should work. So the final answer should have two curl commands in the specified JSON structure.
+</think>
+
+<action>
+[
+  {
+    "action": "bash",
+    "action_input": "curl 'https://www.bv-brc.org/api/genome/?http_accept=application/json&filter=eq(genus,Pseudomonas),eq(species,aeruginosa)&limit=1'"
+  },
+  {
+    "action": "bash",
+    "action_input": "curl 'https://www.bv-brc.org/api/genome_feature/?http_accept=application/json&filter=eq(genome_id,{{genome_id}}),eq(feature_type,CDS)&limit=1&select=feature_id,product,na_sequence_md5'"
+  }
+]
+</action>
+
+## Command Execution 1
+
+<action>
+No valid command generated
+</action>
+
+<observation>
+Command parsing failed: Invalid JSON format or structure in <action> tags
+</observation>
+
+<classification>
+FAILURE: No valid command could be parsed
+</classification>
+
+---
+
+# Attempt 2
+
+## Retry for missing action tags (attempt 1)
+Response missing required <action> and </action> tags. Retrying same call.
+
+## Raw LLM Response with missing tags:
+```
+<think>
+Okay, let's see. The user wants to get all coding sequences (CDS) for a Pseudomonas aeruginosa genome. Previous attempts failed because the command wasn't generated properly, leading to invalid JSON in the action tags. So first, I need to make sure the command is correctly formatted in JSON.
+
+Hmm, the user probably needs to access a genomic database. NCBI's databases come to mind. Pseudomonas aeruginosa is a common bacterium, so there should be genome entries there. The right tool would be Entrez Direct (EDirect), which is used for accessing the NCBI databases via the command line.
+
+The steps would involve: finding the correct genome ID for Pseudomonas aeruginosa, then retrieving the CDS features from that genome. Wait, but which specific genome? There might be multiple strains. The user didn't specify, so maybe default to a reference genome. For example, the PAO1 strain is a common reference. Let me check if that's available.
+
+Alternatively, maybe the user wants all CDS from any P. aeruginosa genome, but that's unlikely. More probably, they want a specific genome. If the user didn't specify, perhaps the latest reference or representative genome should be used. But how to get that programmatically?
+
+Alternatively, use the taxonomy ID for Pseudomonas aeruginosa (which is 287) and search for the assembly entries. Then get the latest or representative genome's accession number. But that might complicate things. Maybe a better approach is to search the nucleotide database for the organism and get the RefSeq genome.
+
+Wait, using EDirect commands: first, use esearch to find the genome entry. For example, search the nucleotide database for "Pseudomonas aeruginosa"[Organism] AND (latest[filter] AND "refseq"[filter] AND "complete genome"[Assembly]). Then get that GenBank file and extract CDS features.
+
+But extracting CDS features from a GenBank file can be done with tools like efetch combined with xtract. The GenBank format includes CDS features in the FEATURES section. So the plan is:
+
+1. Find the RefSeq assembly for Pseudomonas aeruginosa's reference genome.
+2. Fetch the GenBank file for that genome.
+3. Extract all CDS entries using EDirect's xtract.
+
+Wait, let's outline the commands. First, search for the genome:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND (latest[filter] AND refseq[filter] AND complete genome[Assembly])" | efetch -format gb
+
+But maybe that's too broad. Alternatively, use the RefSeq assembly database. Let me check the correct database. The assembly database (db=assembly) might be better. Then get the RefSeq assembly accession, then get the genomic data from nucleotide.
+
+Alternatively, here's a step-by-step approach:
+
+1. Use esearch to find the latest RefSeq complete genome for Pseudomonas aeruginosa in the assembly database.
+2. Get the GenBank accession for that assembly.
+3. Use efetch to retrieve the GenBank file.
+4. Parse the GenBank file to extract CDS features.
+
+But how to do this with EDirect commands? Let's think.
+
+First, search the assembly database:
+
+esearch -db assembly -query "Pseudomonas aeruginosa[Organism] AND latest[filter] AND refseq[filter] AND complete genome[Assembly]" | esummary | xtract -pattern DocumentSummary -element FtpPath_GenBank
+
+This would get the FTP path to the GenBank files. Then, from the FTP path, we can get the GenBank file. For example, the FTP path is something like ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/.../GCF_XXXX.Y. Then the GenBank file is in that directory, named GCF_XXXX.Y_genomic.gbff.gz.
+
+But how to automate this in a command line? Maybe using efetch directly. Alternatively, use the assembly accession.
+
+Alternatively, maybe the user just wants the CDS from the latest RefSeq genome. So, first get the RefSeq genome accession, then use efetch to get the GenBank file, then extract CDS.
+
+Another approach: use the nucleotide database. Search for the organism and filter for the RefSeq and complete genome. Then fetch the GenBank file and parse it.
+
+So the command sequence would be:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter] AND complete genome[title]" | efetch -format gb | grep -A1 "FEATURES             CDS"
+
+But wait, using grep might not capture all CDS entries properly. The GenBank format has each feature starting with a line like "     CDS             ..." followed by qualifiers. So maybe using xtract to parse the features.
+
+Alternatively, use the xtract tool from EDirect to parse the GenBank file. For example:
+
+efetch -db nucleotide -id <Accession> -format gb | xtract -insd CDS gene product
+
+But how to structure this. Let's think. The command would first get the GenBank file, then xtract the CDS features, extracting their gene and product names, or locus tags, etc.
+
+But the user wants all CDS, so maybe just extract their locations and identifiers.
+
+Alternatively, the full command could be:
+
+First, find the genome accession:
+
+ACCESSION=$(esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter] AND complete genome[Assembly]" | esummary | xtract -pattern DocumentSummary -element AccessionVersion)
+
+Then, fetch the CDS features:
+
+efetch -db nucleotide -id $ACCESSION -format gb | xtract -insd INSDSeq_feature-table -if INSDQualifier_name -equals gene -element INSDQualifier_value
+
+Wait, maybe not. The xtract syntax can be tricky. Alternatively, use the following xtract command to extract CDS features:
+
+efetch -db nucleotide -id <accession> -format gb | xtract -insd CDS gene product
+
+But I need to make sure the command is correctly formatted. Let me check the EDirect documentation. The xtract command can parse INSDSeq XML or the GenBank format. Wait, efetch with -format gb would output in GenBank format, but xtract might need the XML format. So perhaps using -format gb is not the right approach. Instead, fetch in INSDSeq XML format.
+
+So, modifying the command:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter] AND complete genome[Assembly]" | efetch -format gb | xtract -insd CDS gene product
+
+Wait, but if we fetch in GenBank format, xtract might not parse it. So perhaps fetching in XML format:
+
+efetch -format docsum
+
+Wait, no. The correct format for INSDSeq XML is -format xml. So:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter] AND complete genome[Assembly]" | efetch -format xml | xtract -insd INSDSeq_feature-table -if INSDQualifier_name -element ...
+
+This is getting complicated. Maybe a better approach is to use the EDirect commands to first get the accession of the latest RefSeq genome, then fetch the GenBank file, and then use a tool like bioawk or another parser to extract CDS features.
+
+Alternatively, use the following steps:
+
+1. Find the RefSeq genome accession for P. aeruginosa.
+2. Use efetch to get the GenBank file.
+3. Extract CDS features using grep or another tool.
+
+But GenBank files have CDS features starting with "     CDS             ", followed by location, then qualifiers like /gene="...", /product="...", etc. So using grep to find lines starting with "     CDS " and then capturing the subsequent lines until the next feature.
+
+But this might not be reliable. Alternatively, use a tool like awk to parse the GenBank file.
+
+But since the user is likely working in a command-line environment with EDirect tools, perhaps the best way is to use EDirect's xtract with the appropriate parameters.
+
+Wait, here's an example from EDirect documentation: To extract CDS features from a GenBank record in XML format, you can use:
+
+efetch -db nucleotide -id NC_000913 -format xml | xtract -insd INSDSeq_feature_table "INSDFeature_key:INSDFeature_location" -if INSDQualifier_name -equals gene -element "&INSDFeature_key" "&INSDQualifier_value"
+
+But I need to adjust this for CDS features. So modifying the command:
+
+efetch -db nucleotide -id [accession] -format xml | xtract -insd INSDSeq_feature_table -if "INSDFeature_key:equals CDS" -element INSDQualifier_value
+
+But I'm not sure. Let me think again. The correct xtract command would be:
+
+xtract -insd INSDSeq_feature_table -if INSDfeat_key -equals CDS -element INSDfeat_location
+
+But perhaps the exact syntax is different. Alternatively, to extract all CDS features and their gene names:
+
+efetch -db nucleotide -id [accession] -format xml | xtract -insd INSDSeq_feature_table -group INSDSeq_feature -if "INSDFeature_key:equals CDS" -tab " " -element INSDQualifier_value
+
+But this is getting too complex. Maybe the user just needs the CDS identifiers or their locations. Alternatively, output the entire CDS entries.
+
+Alternatively, use the following approach:
+
+1. Use esearch to find the genome in the Nucleotide database.
+
+```
+
+## Initial Prompt
+Previous attempts to answer this query have failed. 
+                    Here are the previous attempts and their results:
+
+                    
+Attempt 1:
+Command: No valid command generated
+Result: Command parsing failed: Invalid JSON format or structure in <action> tags
+Classification: FAILURE: No valid command could be parsed
+Status: failure
+------------------------------
+
+
+                    Please provide a new approach to answer the original query:
+                    Get all coding sequences (CDS) for a Pseudomonas aeruginosa genome.
+
+                    Remember to:
+                    1. Consider why the previous attempts failed
+                    2. Adjust the approach based on the error messages or results
+                    3. Try a different strategy if the previous ones weren't successful
+                    4. Include your reasoning in <think> tags and your final commands in <action> tags
+                
+
+## LLM Response
+<think>
+Okay, let's see. The user wants to get all coding sequences (CDS) for a Pseudomonas aeruginosa genome. Previous attempts failed because the command wasn't generated properly, leading to a JSON parsing error. So, the first thing I need to do is make sure that the command I generate is in the correct JSON format within the <action> tags.
+
+In the first attempt, the command was invalid, probably due to incorrect structure. Maybe the user tried to use a command that wasn't properly formatted. So, I need to think about the right way to retrieve CDS features from a genome.
+
+Pseudomonas aeruginosa is a common bacterium, so its genome data should be available in public databases like NCBI. The best approach is to use NCBI's Entrez Direct tools, specifically efetch, which can retrieve data in various formats. CDS features are part of the GenBank file's annotations. 
+
+The plan is to search for the genome record of Pseudomonas aeruginosa, get its GenBank file, extract the CDS features. Using esearch to find the genome, then efetch with -db nucleotide and -format gb to get the GenBank file. Then parse the output to extract CDS entries. 
+
+Wait, but how to ensure we get the correct genome? The user might need the reference genome. So using the scientific name with the "latest" or "reference" filter. Alternatively, using the assembly accession. But maybe the user doesn't have the specific accession, so using the organism name with a filter for the reference genome.
+
+Alternatively, using the taxon ID. Pseudomonas aeruginosa's taxid is 287. So, the esearch command could be:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND (latest[filter] OR reference[filter])" | efetch -format gb
+
+But then, how to extract CDS features from the GenBank file? The GenBank format includes CDS features in the FEATURES section. Each CDS entry starts with "CDS" followed by details. So, using grep or awk to extract lines starting with "CDS".
+
+Wait, but maybe using a tool like bioawk or another parser would be better. However, assuming standard Unix tools are available, a simple approach would be to pipe the GenBank file into grep and process it.
+
+So the command would be:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND (latest[filter] OR reference[filter])" | efetch -format gb | grep -A 1 "FEATURES" | grep "CDS" | awk -F " " '{print $2}'
+
+Wait, maybe that's not accurate. Let me think again. The FEATURES section has lines starting with features like CDS, followed by location. Then, the qualifiers like /gene, /product, etc. So, perhaps extracting all lines that start with "CDS" and then the lines that follow until the next feature. But this might be complicated with grep.
+
+Alternatively, using the -format gb with efetch and then using a script to parse CDS features. But since the user wants a command-line solution, perhaps using a combination of grep and sed.
+
+Alternatively, using the -feature CDS in efetch parameters. Wait, does efetch support that? Let me check. No, efetch parameters don't include feature filtering. So the filtering has to be done after retrieving the GenBank file.
+
+Another approach: Use the EUtilities to get the protein coding sequences. Maybe using elink to get related proteins, but that might not be direct.
+
+Alternatively, using the NCBI's Gene database. But perhaps the most straightforward way is to get the GenBank file and parse the CDS features.
+
+So, the command would first retrieve the GenBank file for the latest Pseudomonas aeruginosa genome, then extract the CDS lines. However, the user might need more details like the actual sequence or the gene names. But the query is for the coding sequences (CDS), which are the regions in the genome annotated as coding. So, the command should output those regions.
+
+Wait, but CDS entries in GenBank files include the location (e.g., complement(123..456)), and qualifiers like gene, product, protein_id, etc. So, to get all CDS features, the command needs to extract each CDS entry along with its details.
+
+But the previous attempt's error was due to invalid JSON in the action tags. So, the user's assistant needs to generate a valid JSON command. The previous attempt might have had a syntax error in the JSON structure. So, the new command must be properly formatted.
+
+The correct structure should be:
+
+{
+  "command": "esearch ... | efetch ... | some_processing",
+  "comments": "Explanation of the command"
+}
+
+So, the action should be a JSON object with "command" and "comments" keys.
+
+Putting it all together, the command would use esearch to find the genome, efetch to get the GenBank file, then process it to extract CDS features. For example:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter]" | efetch -format gb | awk '/^CDS/{print; while(getline && $0 !~ /^\//) {print}}'
+
+This awk command looks for lines starting with CDS, then prints them and continues printing until a line starting with / (which is the end of the qualifiers). This way, each CDS entry is captured.
+
+Alternatively, using a tool like xtract from the Entrez Direct suite, but I'm not sure if that's available. If not, the awk approach is better.
+
+So, the final command would be:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter]" | efetch -format gb | awk '/^     CDS/{print; getline; while($0 ~ /^                     /){print; getline}}'
+
+Wait, the GenBank format uses specific indentation. The feature lines (like CDS) start at column 6, then the qualifiers are indented more. So, the CDS line starts with "     CDS" (five spaces), then the location. Then, the qualifiers are indented with 21 spaces. So, perhaps using a regex to match lines starting with "     CDS" and then capture subsequent lines that are part of the same feature.
+
+But handling this with awk might be tricky. Alternatively, using a script that processes each feature. But for simplicity, maybe using grep with context lines.
+
+Alternatively, using the biopython library, but that's not command-line. Since the user is expecting a command-line solution, perhaps the best way is to use the GenBank file and process it with awk or sed.
+
+Alternatively, using the -format fasta_cds_na option in efetch, which retrieves the coding sequences in FASTA format. Wait, that's a good point! The efetch tool has different formats. If you use -format fasta_cds_na, it will retrieve the nucleotide sequences of the CDS features in FASTA format. That would directly give the CDS sequences without needing to parse the GenBank file.
+
+So, the command could be:
+
+esearch -db nucleotide -query "Pseudomonas aeruginosa[Organism] AND refseq[filter]" | efetch -format fasta_cds_na
+
+This would fetch all CDS regions in FASTA format. That's much simpler and avoids parsing the GenBank file manually. This seems like a better approach. The previous attempt might have tried to generate a complex command that led to parsing errors, but using the built-in format fasta_cds_na would simplify things.
+
+So, the correct command is to use efetch with format fasta_cds_na after finding the correct genome entry. To ensure we get the right genome, adding refseq[filter] to get the RefSeq entry, which is curated.
+
+Therefore, the JSON command should be properly formatted as:
+
+{
+  "command": "esearch -db nucleotide -query 'Pseudomonas aeruginosa[Organism] AND refseq[filter]' | efetch -format fasta_cds_na",
+  "comments": "Fetches all CDS entries in FASTA format for the latest Pseudomonas aeruginosa RefSeq genome."
+}
+
+This should avoid JSON parsing errors because the command is correctly structured within the JSON object. The previous failure was likely due to invalid JSON syntax, such as missing quotes or incorrect brackets. Ensuring that the command string is properly enclosed in quotes and escaped if necessary (though here, the single quotes inside the command should be okay within the JSON double quotes).
+</think>
+
+<action>
+{
+  "command": "esearch -db nucleotide -query 'Pseudomonas aeruginosa[Organism] AND refseq[filter]' | efetch -format fasta_cds_na",
+  "comments": "This command retrieves all coding sequences (CDS) in FASTA format by querying NCBI's RefSeq database for Pseudomonas aeruginosa. Using 'fasta_cds_na' format directly extracts CDS nucleotide sequences, avoiding manual parsing of GenBank files."
+}
+</action>
+
+## Command Execution 1
+
+<action>
+No valid command generated
+</action>
+
+<observation>
+Command parsing failed: Invalid JSON format or structure in <action> tags
+</observation>
+
+<classification>
+FAILURE: No valid command could be parsed
+</classification>
+
+---
+
+# Attempt 3
+
+## Initial Prompt
+Previous attempts to answer this query have failed. 
+                    Here are the previous attempts and their results:
+
+                    
+Attempt 1:
+Command: No valid command generated
+Result: Command parsing failed: Invalid JSON format or structure in <action> tags
+Classification: FAILURE: No valid command could be parsed
+Status: failure
+------------------------------
+
+Attempt 2:
+Command: No valid command generated
+Result: Command parsing failed: Invalid JSON format or structure in <action> tags
+Classification: FAILURE: No valid command could be parsed
+Status: failure
+------------------------------
+
+
+                    Please provide a new approach to answer the original query:
+                    Get all coding sequences (CDS) for a Pseudomonas aeruginosa genome.
+
+                    Remember to:
+                    1. Consider why the previous attempts failed
+                    2. Adjust the approach based on the error messages or results
+                    3. Try a different strategy if the previous ones weren't successful
+                    4. Include your reasoning in <think> tags and your final commands in <action> tags
+                
+
+## LLM Response
+<think>
+Okay, let's see. The user wants to get all coding sequences (CDS) for a Pseudomonas aeruginosa genome. Previous attempts failed because the commands had invalid JSON in the action tags. So I need to make sure the JSON is correctly formatted this time.
+
+First, I remember that NCBI's datasets command-line tool can be used to download genome data. The user probably needs to fetch the genome data first and then extract the CDS features. 
+
+Wait, the previous attempts might have tried generating a command but messed up the JSON structure. Let me check. The error was "Invalid JSON format or structure in <action> tags". So maybe the previous commands had syntax errors like missing commas or quotes. 
+
+So, the correct approach would be to use the datasets tool to download the genome in GenBank format, which includes the annotations. Then, use dataformat to extract the CDS features. 
+
+First, find the genome accession for Pseudomonas aeruginosa. Let's say the user might not know the exact accession, so using the taxon name and specifying reference genome could help. The command would be something like:
+
+datasets download genome taxon "Pseudomonas aeruginosa" --reference --filename pa_genome.zip
+
+Then, after downloading, extract the CDS using dataformat tsv. But wait, the dataformat command needs the zip file and the specific fields. The fields for CDS might include accession, gene ID, product, location, etc. So the command would be:
+
+dataformat tsv genome --fields accession,gene-id,product,location,type --include cds --package pa_genome.zip
+
+But I need to make sure the JSON in the action tags is properly formatted. Let me structure the commands correctly with proper JSON syntax. Each command should be an object with "command" and "parameters". Also, ensure that the parameters are correctly quoted and commas are in the right places.
+
+Another thing: maybe the previous attempts didn't split the commands into separate steps. So first download the genome, then extract the CDS. Let me structure the commands step by step. Also, check if the parameters are correct. For example, in the datasets download command, using --reference to get reference genomes might help in getting a complete and annotated genome. 
+
+Wait, does the datasets command require the assembly accession? If the user doesn't specify, using the taxon name with --reference should retrieve the reference genome. But if there are multiple, maybe the user needs to specify, but perhaps the default is okay for this purpose. 
+
+So putting it all together, the first command downloads the genome data, and the second extracts the CDS features into a TSV. The JSON should have each command as a separate object in the "commands" array. Let me make sure the quotes are correct, and there are no missing commas or braces.
+</think>
+
+<action>
+{
+  "commands": [
+    {
+      "command": "datasets",
+      "parameters": {
+        "download": "genome",
+        "taxon": "Pseudomonas aeruginosa",
+        "reference": true,
+        "filename": "pa_cds.zip",
+        "include": "cds"
+      }
+    },
+    {
+      "command": "dataformat",
+      "parameters": {
+        "format": "tsv",
+        "package": "pa_cds.zip",
+        "fields": "accession,start,end,strand,gene-id,product,type"
+      }
+    }
+  ]
+}
+</action>
+
+<reasoning>
+1. Previous failures were due to JSON formatting issues. This command structure uses valid JSON syntax with proper quotes and commas.
+
+2. Directly requesting CDS features in the download phase using "include": "cds" filters the dataset upfront, reducing unnecessary data transfer.
+
+3. The dataformat command specifies TSV output with relevant CDS fields (gene-id, product, location info) for clarity.
+
+4. Using "--reference" ensures we get high-quality annotated reference genomes where CDS annotations are more reliable.
+
+5. Combined approach:
+   - First command downloads only CDS features from reference genomes
+   - Second command extracts structured TSV data from the downloaded package
+</reasoning>
+
+## Command Execution 1
+
+<action>
+No valid command generated
+</action>
+
+<observation>
+Command parsing failed: Invalid JSON format or structure in <action> tags
+</observation>
+
+<classification>
+FAILURE: No valid command could be parsed
+</classification>
+
+---
+

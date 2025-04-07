@@ -1,0 +1,5 @@
+# User Query
+Find all pseudogenes in a Mycobacterium tuberculosis strain.
+
+# Attempt 1
+

@@ -1,4 +1,10 @@
-Given the user's initial prompt "{{user prompt: {user_query} }}" enhance it. 
+# User Query
+Extract all ribosomal RNA (rRNA) genes from a Vibrio cholerae genome.
+
+# Attempt 1
+
+## Original Superprompt (before enhancement)
+Given the user's initial prompt "{user prompt: Extract all ribosomal RNA (rRNA) genes from a Vibrio cholerae genome. }" enhance it. 
 
 CRITICAL FORMAT REQUIREMENTS:
 - EVERY command must be in <action> tags
@@ -19,19 +25,19 @@ EXAMPLES OF CORRECT FORMAT:
 Input: "List all Pseudomonas aeruginosa genome IDs."
 Output:
 <action>
-{{
+{
     "action": "bash",
     "action_input": "curl -s \"https://www.bv-brc.org/api/genome/?and(eq(genus,Pseudomonas),eq(species,aeruginosa))&select(genome_id)\""
-}}
+}
 </action>
 
 Input: "Get features from genome 287.3167 that are proteins"
 Output:
 <action>
-{{
+{
     "action": "bash",
     "action_input": "curl -L \"https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\""
-}}
+}
 </action>
 
 1. Start with clear, precise instructions placed at the beginning of the prompt 
@@ -112,9 +118,9 @@ Other tips:
         bash
         cat api_docs/genome.txt
         ```
-      
+
         To target *Escherichia coli*, we use filters for the genus and species fields. Genomes can be retrieved from the genome collection.
-      
+
         The final command is:
         ```
         bash
@@ -124,13 +130,15 @@ Other tips:
 
     <action>
        [
-       {{
+       {
             "action": "bash",
             "action_input": "cat api_docs/genome.txt"
-       }},
-       {{
+       },
+       {
            "action": "bash",
            "action_input": "curl -L \'https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\'"
-       }}
+       }
        ]
     </action>
+
+
