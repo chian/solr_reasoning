@@ -12,9 +12,63 @@ import json
 import re
 import io
 import openai  # Add OpenAI import for o1-pro model
+from pydantic import BaseModel, Field
+from enum import Enum
 
 from agent_parser import test_parse_commands, sanitize_filename, parse_commands, extract_commands_with_llm   
 from helper_functions import query_llm, derive_solution_with_llm, classify_last_command_output_with_llm, parse_last_command_output_with_llm, generate_training_output, evaluate_solution_with_llm, generate_final_solution_with_llm, update_commands_with_llm, fix_failed_command_with_llm, remove_think_tags
+
+# Define the status enum
+class CommandStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
+
+# Define the Pydantic model for command classification
+class CommandClassification(BaseModel):
+    status: CommandStatus = Field(..., description="The status of the command execution")
+    reason: str = Field(..., description="Brief explanation of the classification")
+    
+    def is_successful(self) -> bool:
+        """Helper method to check if the command was successful"""
+        return self.status == CommandStatus.SUCCESS
+
+def parse_classification_text(classification_text):
+    """
+    Parse a classification text into a CommandClassification object.
+    
+    Args:
+        classification_text (str): The classification text to parse
+        
+    Returns:
+        CommandClassification: A structured classification object
+    """
+    try:
+        # Try to find the classification and reason in the text
+        status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', classification_text, re.IGNORECASE)
+        reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
+        
+        if status_match and reason_match:
+            status = status_match.group(1).upper()
+            reason = reason_match.group(1).strip()
+            
+            # Create a CommandClassification object
+            return CommandClassification(
+                status=CommandStatus(status),
+                reason=reason
+            )
+        else:
+            # If we can't extract the structured data, return a default failure
+            return CommandClassification(
+                status=CommandStatus.FAILURE,
+                reason="Failed to parse classification text"
+            )
+    except Exception as e:
+        # If there's an error, return a default failure
+        return CommandClassification(
+            status=CommandStatus.FAILURE,
+            reason=f"Error parsing classification: {str(e)}"
+        )
 
 # Get API keys from environment variables
 together_api_key = os.getenv('TOGETHER_API_KEY')
@@ -524,7 +578,9 @@ def main():
                         f.write(f"<classification>\n{classification}\n</classification>\n\n")
 
                     # Check if command was technically successful
-                    cmd_success = "success" in classification.lower() or "correct" in classification.lower()
+                    # Parse the classification text into a structured object
+                    classification_obj = parse_classification_text(classification)
+                    cmd_success = classification_obj.is_successful()
                     
                     # Record this attempt details
                     command_result = {
@@ -623,19 +679,18 @@ def main():
                     # Update the command in the list and retry it
                     commands[command_index] = fixed_cmd
                     
-                    # Note: We don't add this to successful_commands since it failed
                     
                     # Do not increment command_index - we'll retry this command
                     continue
             
             # After all commands are executed, evaluate the attempt as a whole
            
-            # Get only successful command outputs from the existing successful_commands list
-            successful_observations = [cmd['action_output'] for cmd in successful_commands]
-            
+            # Drop into interactive Python session
+            import pdb; pdb.set_trace()
+
             # Derive a comprehensive solution from successful command outputs only
             print("Deriving final solution from successful command outputs...")
-            final_solution = generate_final_solution_with_llm(user_query, successful_observations, together_client)
+            final_solution = generate_final_solution_with_llm(user_query, successful_commands, together_client)
             
             # Write the final solution to the trace file
             with open(trace_file_path, "a", encoding="utf-8") as f:

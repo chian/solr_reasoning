@@ -140,7 +140,35 @@ def classify_last_command_output_with_llm(user_query, cmd, observation_text, cli
         "temperature": 0.7
     }
     
-    return query_llm(client, prompt, model_config)
+    # Get the classification from the LLM
+    response = query_llm(client, prompt, model_config)
+    
+    # Extract the classification and reason from the response
+    try:
+        # Try to find the classification and reason in the response
+        status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', response, re.IGNORECASE)
+        reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', response, re.DOTALL)
+        
+        if status_match and reason_match:
+            status = status_match.group(1).upper()
+            reason = reason_match.group(1).strip()
+            
+            # Create a CommandClassification object
+            from solr_together import CommandClassification, CommandStatus
+            classification = CommandClassification(
+                status=CommandStatus(status),
+                reason=reason
+            )
+            
+            # Return the original response format for backward compatibility
+            return f"Classification: {status}\nBrief explanation: {reason}"
+        else:
+            # If we can't extract the structured data, return the original response
+            return response
+    except Exception as e:
+        # If there's an error, return the original response
+        print(f"Error parsing classification: {str(e)}")
+        return response
 
 def derive_solution_with_llm(classification, client):
     """
@@ -269,7 +297,6 @@ def evaluate_solution_with_llm(user_query, solution, client):
 
     Answer with COMPLETE, PARTIAL, or FAILURE and explain your reasoning.
     """
-    
     # Create a proper model config
     model_config = {
         "model": "deepseek-ai/DeepSeek-R1",
@@ -286,40 +313,46 @@ def evaluate_solution_with_llm(user_query, solution, client):
     
     return success, evaluation
 
-def generate_final_solution_with_llm(user_query, all_observations, client):
+def generate_final_solution_with_llm(user_query, successful_commands, client):
     """
     Generates a comprehensive final solution based on all command outputs.
     
     Args:
         user_query (str): The original user query
-        all_observations (list): List of all command outputs
+        successful_commands (list of dicts): List of all commands and outputs
         client: The LLM client to use
     
     Returns:
         str: The final solution that answers the user query
     """
     # Combine all observations for a comprehensive solution
-    combined_observation = "\n\n".join(all_observations)
+    command_trace = "\n\n".join([
+        f"Command: {cmd['action_input']}\nOutput: {cmd['action_output']}"
+        for cmd in successful_commands
+    ])
     
     # Create a prompt to generate the final solution
     solution_prompt = f"""
+    You will be given a successful trace of commands and outputs and your job is to
+    summarize the success in plain words so that the novice computer user can 
+    understand what worked and why it worked.
+
     User Query: {user_query}
     
-    Based on all the command outputs below, please provide a comprehensive solution:
+    Command Trace: 
+    {command_trace}
     
-    {combined_observation}
-    
-    Your solution should directly answer the user's original query.
+    Remember, I am not asking for a solution because I already solved this problem. 
+    I am asking for a solution summary only.
     """
     
     # Create a proper model config
     model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
+        "model": "gpt-4o",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": solution_prompt}
         ],
-        "max_tokens": 32000,
+        "max_tokens": 8000,
         "temperature": 0.7
     }
     
