@@ -12,26 +12,10 @@ import json
 import re
 import io
 import openai  # Add OpenAI import for o1-pro model
-from pydantic import BaseModel, Field
-from enum import Enum
 
 from agent_parser import test_parse_commands, sanitize_filename, parse_commands, extract_commands_with_llm   
-from helper_functions import query_llm, derive_solution_with_llm, classify_last_command_output_with_llm, parse_last_command_output_with_llm, generate_training_output, evaluate_solution_with_llm, generate_final_solution_with_llm, update_commands_with_llm, fix_failed_command_with_llm, remove_think_tags
+from helper_functions import query_llm, derive_solution_with_llm, classify_last_command_output_with_llm, parse_last_command_output_with_llm, generate_training_output, evaluate_solution_with_llm, generate_final_solution_with_llm, update_commands_with_llm, fix_failed_command_with_llm, remove_think_tags, CommandClassification, CommandStatus
 
-# Define the status enum
-class CommandStatus(str, Enum):
-    SUCCESS = "SUCCESS"
-    FAILURE = "FAILURE"
-    PARTIAL = "PARTIAL"
-
-# Define the Pydantic model for command classification
-class CommandClassification(BaseModel):
-    status: CommandStatus = Field(..., description="The status of the command execution")
-    reason: str = Field(..., description="Brief explanation of the classification")
-    
-    def is_successful(self) -> bool:
-        """Helper method to check if the command was successful"""
-        return self.status == CommandStatus.SUCCESS
 
 def parse_classification_text(classification_text):
     """
@@ -43,31 +27,25 @@ def parse_classification_text(classification_text):
     Returns:
         CommandClassification: A structured classification object
     """
-    try:
-        # Try to find the classification and reason in the text
-        status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', classification_text, re.IGNORECASE)
-        reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
+
+    # Try to find the classification and reason in the text
+    status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', classification_text, re.IGNORECASE)
+    reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
+    
+    if status_match and reason_match:
+        status = status_match.group(1).upper()
+        reason = reason_match.group(1).strip()
         
-        if status_match and reason_match:
-            status = status_match.group(1).upper()
-            reason = reason_match.group(1).strip()
-            
-            # Create a CommandClassification object
-            return CommandClassification(
-                status=CommandStatus(status),
-                reason=reason
-            )
-        else:
-            # If we can't extract the structured data, return a default failure
-            return CommandClassification(
-                status=CommandStatus.FAILURE,
-                reason="Failed to parse classification text"
-            )
-    except Exception as e:
-        # If there's an error, return a default failure
+        # Create a CommandClassification object
+        return CommandClassification(
+            status=CommandStatus(status),
+            reason=reason
+        )
+    else:
+        # If we can't extract the structured data, return a default failure
         return CommandClassification(
             status=CommandStatus.FAILURE,
-            reason=f"Error parsing classification: {str(e)}"
+            reason="Failed to parse classification text"
         )
 
 # Get API keys from environment variables
@@ -409,6 +387,12 @@ def main():
         query_dir = os.path.join(main_results_dir, query_subfolder)
         os.makedirs(query_dir, exist_ok=True)
         
+        # Check if a training file already exists in this directory
+        training_files = [f for f in os.listdir(query_dir) if f.startswith("training_")]
+        if training_files:
+            print(f"Skipping query '{user_query}' - training file already exists")
+            continue
+        
         # Create the trace file at the beginning
         trace_file_path = os.path.join(query_dir, "complete_trace.txt")
         
@@ -686,11 +670,11 @@ def main():
             # After all commands are executed, evaluate the attempt as a whole
            
             # Drop into interactive Python session
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
 
             # Derive a comprehensive solution from successful command outputs only
             print("Deriving final solution from successful command outputs...")
-            final_solution = generate_final_solution_with_llm(user_query, successful_commands, together_client)
+            final_solution = generate_final_solution_with_llm(user_query, successful_commands, openai_client)
             
             # Write the final solution to the trace file
             with open(trace_file_path, "a", encoding="utf-8") as f:

@@ -1,6 +1,23 @@
 from together import Together
 import re
 import os
+from pydantic import BaseModel, Field
+from enum import Enum
+
+# Define the status enum
+class CommandStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
+
+# Define the Pydantic model for command classification
+class CommandClassification(BaseModel):
+    status: CommandStatus = Field(..., description="The status of the command execution")
+    reason: str = Field(..., description="Brief explanation of the classification")
+    
+    def is_successful(self) -> bool:
+        """Helper method to check if the command was successful"""
+        return self.status == CommandStatus.SUCCESS
 
 def remove_think_tags(text: str) -> str:
     """
@@ -154,7 +171,6 @@ def classify_last_command_output_with_llm(user_query, cmd, observation_text, cli
             reason = reason_match.group(1).strip()
             
             # Create a CommandClassification object
-            from solr_together import CommandClassification, CommandStatus
             classification = CommandClassification(
                 status=CommandStatus(status),
                 reason=reason
@@ -315,7 +331,7 @@ def evaluate_solution_with_llm(user_query, solution, client):
 
 def generate_final_solution_with_llm(user_query, successful_commands, client):
     """
-    Generates a comprehensive final solution based on all command outputs.
+    Generates a final solution based on successful command outputs.
     
     Args:
         user_query (str): The original user query
