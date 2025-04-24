@@ -3,12 +3,17 @@ import re
 import os
 from pydantic import BaseModel, Field
 from enum import Enum
+import json
+import time
+from typing import Dict, List, Any, Optional, Tuple, Union
+import openai
+from mcts_thinking import NodeType
 
 # Define the status enum
-class CommandStatus(str, Enum):
+class CommandStatus(Enum):
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
-    PARTIAL = "PARTIAL"
+    PENDING = "PENDING"
 
 # Define the Pydantic model for command classification
 class CommandClassification(BaseModel):
@@ -18,6 +23,14 @@ class CommandClassification(BaseModel):
     def is_successful(self) -> bool:
         """Helper method to check if the command was successful"""
         return self.status == CommandStatus.SUCCESS
+
+class SolutionStatus(Enum):
+    COMPLETE = "COMPLETE"
+    INCOMPLETE = "INCOMPLETE"
+
+class SolutionClassification(BaseModel):
+    status: SolutionStatus = Field(..., description="The status of the solution")
+    reason: str = Field(..., description="Brief explanation of the classification")
 
 def remove_think_tags(text: str) -> str:
     """
@@ -33,122 +46,63 @@ def remove_think_tags(text: str) -> str:
 
 def query_llm(client, user_query, model_config):
     """
-    Queries an LLM with the given user query using the provided configuration.
+    Query an LLM with a user query and model configuration.
     
     Args:
-        client: The client instance (Together or OpenAI).
-        user_query (str): The query to send to the LLM.
-        model_config (dict): Configuration for the model.
-    
+        client: The client to use for the API call
+        user_query (str): The user's query
+        model_config (dict): The model configuration
+        
     Returns:
-        str: The response from the LLM.
+        str: The model's response
     """
     # Get the model ID from the config
-    model_id = model_config.get('model_id', model_config.get('model'))
+    model_id = model_config.get("model_id", model_config.get("model"))
     
     # Get the messages from the config
-    messages = model_config['messages']
+    messages = model_config.get("messages", [])
     
-    # Create the parameters dictionary
-    params = {
+    # Create the parameters dictionary for the API call
+    parameters = {
         "model": model_id,
         "messages": messages
     }
     
     # Add any additional parameters from the config
     api_params = model_config.get('api_params', {})
-    params.update(api_params)
+    parameters.update(api_params)
     
-    # Call the API
-    response = client.chat.completions.create(**params)
+    # Make the API call
+    response = client.chat.completions.create(**parameters)
+    
+    # Return the response content
     return response.choices[0].message.content
 
-def parse_last_command_output_with_llm(terminal_output_lines, client):
+def parse_last_command_output_with_llm(output: str, client) -> Dict[str, Any]:
     """
-    Takes in the command output and uses an LLM to extract relevant information.
-
-    Parameters:
-        terminal_output_lines (list of str): The lines captured from the command output.
-
-    Returns:
-        str: The LLM's best guess at the parsed output.
-    """
-    output_str = "\n".join(terminal_output_lines)
-
-    prompt = f"""You are an expert in bioinformatics. Below is the raw 
-        output from a solr query execution:
-
-        {output_str}
-
-        Your task is to extract and return the relevant information from the output.
-
-        Output:
-        """
-    print("Parsing Command Output with LLM...")
-    
-    # Create a proper model config
-    model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 32000,
-        "temperature": 0.7
-    }
-    
-    return query_llm(client, prompt, model_config)
-
-def classify_last_command_output_with_llm(user_query, cmd, observation_text, client):
-    """
-    Uses the LLM to classify the output of the last command.
+    Parse the last command output using the LLM.
     
     Args:
-        user_query (str): The original user query
-        cmd (str): The command that was executed
-        observation_text (str): Output from the command execution
+        output (str): The command output
         client: The LLM client to use
-    
+        
     Returns:
-        str: Classification of the output
+        dict: Parsed output data
     """
-    # Limit the observation to a reasonable size
-    observation_lines = observation_text.splitlines()[:100]
-    observation_text = "\n".join(observation_lines)
-    
     prompt = f"""
-    You are evaluating if a command execution was TECHNICALLY SUCCESSFUL.
-
-    User Query: "{user_query}"
-
-    Here is the output of the command:
-    ```
-    {observation_text}
-    ```
-
-    Classify ONLY the TECHNICAL execution of this command:
-
-    1. SUCCESS: Command executed correctly and returned valid, non-error data
-       - No error messages, API errors, or undefined field errors
-       - Returned properly formatted data
-       - Output can be used for further analysis (even if incomplete)
-
-    2. FAILURE: Command failed technically
-       - Contains syntax errors
-       - Shows API errors like "undefined field" or HTTP error codes
-       - Returned error messages instead of data
-       - Output cannot be used for further processing
-
-    Important: This is ONLY about technical execution, NOT about answering the user's query.
-    A command can succeed technically but not provide a complete answer.
-
-    Classification: [SUCCESS/FAILURE]
-    Brief explanation: 
+    Parse the following command output into structured data:
+    
+    {output[:1000]}...
+    
+    Please extract:
+    1. Key information
+    2. Error messages (if any)
+    3. Important values or IDs
+    4. Status indicators
     """
     
-    # Create a proper model config
     model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
+        "model_id": "deepseek-ai/DeepSeek-R1",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -157,56 +111,41 @@ def classify_last_command_output_with_llm(user_query, cmd, observation_text, cli
         "temperature": 0.7
     }
     
-    # Get the classification from the LLM
     response = query_llm(client, prompt, model_config)
     
-    # Extract the classification and reason from the response
+    # Try to parse as JSON
     try:
-        # Try to find the classification and reason in the response
-        status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', response, re.IGNORECASE)
-        reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', response, re.DOTALL)
-        
-        if status_match and reason_match:
-            status = status_match.group(1).upper()
-            reason = reason_match.group(1).strip()
-            
-            # Create a CommandClassification object
-            classification = CommandClassification(
-                status=CommandStatus(status),
-                reason=reason
-            )
-            
-            # Return the original response format for backward compatibility
-            return f"Classification: {status}\nBrief explanation: {reason}"
-        else:
-            # If we can't extract the structured data, return the original response
-            return response
-    except Exception as e:
-        # If there's an error, return the original response
-        print(f"Error parsing classification: {str(e)}")
-        return response
+        return json.loads(response)
+    except:
+        # If not JSON, return as text
+        return {"text": response}
 
-def derive_solution_with_llm(classification, client):
+def classify_last_command_output_with_llm(user_query: str, command: str, output: str, client) -> str:
     """
-    Uses the LLM to derive a solution based on the classification.
+    Classify the last command output using the LLM.
     
     Args:
-        classification (str): Classification of the command output
-    
+        user_query (str): The original user query
+        command (str): The command that was executed
+        output (str): The command output
+        client: The LLM client to use
+        
     Returns:
-        str: Derived solution
+        str: The classification text
     """
     prompt = f"""
-    Based on the following classification of a command output:
+    Classify the following command output for the user query:
     
-    Classification:
-    {classification}
+    User Query: "{user_query}"
+    Command: "{command}"
+    Output: "{output[:1000]}..."
     
-    Please provide a concise solution or answer based on this information.
-    If the command was not successful, indicate what would be needed to answer the query.
+    Please provide:
+    1. Classification (SUCCESS or FAILURE)
+    2. Brief explanation
+    3. Any relevant details or patterns
     """
     
-    # Create a proper model config
     model_config = {
         "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
@@ -219,101 +158,250 @@ def derive_solution_with_llm(classification, client):
     
     return query_llm(client, prompt, model_config)
 
-def generate_training_output(user_query, think_content, action_content, answer_content, output_dir="query_results"):
+def derive_solution_with_llm(classification_text: str, client) -> str:
     """
-    Generates a training output file for successful runs.
+    Derive a solution from the classification text.
+    
+    Args:
+        classification_text (str): The classification text
+        client: The LLM client to use
+        
+    Returns:
+        str: The derived solution
+    """
+    prompt = f"""
+    Based on the following classification, derive a solution:
+    
+    {classification_text}
+    
+    Please provide a clear and concise solution that addresses the original query.
+    """
+    
+    model_config = {
+        "model": "deepseek-ai/DeepSeek-R1",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 32000,
+        "temperature": 0.7
+    }
+    
+    return query_llm(client, prompt, model_config)
+
+def generate_training_output(user_query: str, think_content: str, action_content: str, answer_content: str, output_dir: Optional[str] = None) -> str:
+    """
+    Generate training output from the collected data.
     
     Args:
         user_query (str): The original user query
-        think_content (str): The reasoning process from <think> tags
-        action_content (str): The actions taken and their outputs
+        think_content (str): The thinking process
+        action_content (str): The actions taken
         answer_content (str): The final answer
-        output_dir (str): Directory to save the training output
-    
+        output_dir (str, optional): Directory to save the output
+        
     Returns:
         str: Path to the generated training file
     """
-    from datetime import datetime
-    
-    # Create output directory if it doesn't exist
+    # Create output directory if not provided
+    if not output_dir:
+        output_dir = "training_output"
     os.makedirs(output_dir, exist_ok=True)
     
-    # Generate filename with just timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"training_{timestamp}.txt"
+    # Generate filename
+    filename = f"training_{int(time.time())}.json"
     filepath = os.path.join(output_dir, filename)
     
-    # Format the training output with template
-    training_content = f"""USER_QUERY: A conversation between User and Assistant. The user asks a question, and the Assistant solves it.
-The assistant first thinks about the reasoning process in the mind and then provides the user
-with the answer, sometimes using actions to find the answer. The reasoning process, actions, and answer are enclosed within <think></think>, <action> </action> and
-<answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <action> [ {{"action": type of action here, "action_input": specific command to launch here, "action_output": put observation here}}, {{ add more actions as needed}} ]
-<answer> answer here </answer>. 
-
-User: {user_query}
-
-Assistant:
-<think>
-{think_content}
-</think>
-
-<action>
-{action_content}
-</action>
-
-<answer>
-{answer_content}
-</answer>
-"""
+    # Create training data
+    training_data = {
+        "query": user_query,
+        "thinking_process": think_content,
+        "actions": action_content,
+        "answer": answer_content
+    }
     
     # Write to file
-    with open(filepath, 'w') as f:
-        f.write(training_content)
+    with open(filepath, "w") as f:
+        json.dump(training_data, f, indent=2)
     
     return filepath
 
-def evaluate_solution_with_llm(user_query, solution, client):
+def save_mcts_trace(mcts_manager, user_query: str, command_attempts: List[Dict[str, Any]], output_dir: Optional[str] = None) -> str:
     """
-    Evaluates if a solution actually answers the user's query.
+    Save the complete MCTS trace to a JSON file.
+    
+    Args:
+        mcts_manager: The MCTSThinkingManager instance
+        user_query (str): The original user query
+        command_attempts (list): List of command attempts
+        output_dir (str, optional): Directory to save the output
+        
+    Returns:
+        str: Path to the generated trace file
+    """
+    # Create output directory if not provided
+    if not output_dir:
+        output_dir = "mcts_traces"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate filename
+    filename = f"mcts_trace_{int(time.time())}.json"
+    filepath = os.path.join(output_dir, filename)
+    
+    # Create a serializable version of the node map
+    serializable_node_map = {}
+    for node_id, node in mcts_manager.node_map.items():
+        # Convert ActionState to dict if present
+        action_state = None
+        if node.get('actionState'):
+            action_state = {
+                'command': node['actionState'].command,
+                'working_dir': node['actionState'].working_dir,
+                'environment': node['actionState'].environment,
+                'dependencies': node['actionState'].dependencies,
+                'prerequisites': node['actionState'].prerequisites,
+                'command_output': node['actionState'].command_output,
+                'exit_code': node['actionState'].exit_code,
+                'execution_time': node['actionState'].execution_time,
+                'resource_usage': node['actionState'].resource_usage,
+                'error_message': node['actionState'].error_message,
+                'status': node['actionState'].status.value if node['actionState'].status else None
+            }
+        
+        # Create serializable node
+        serializable_node = {
+            'thought': node.get('thought'),
+            'thoughtNumber': node.get('thoughtNumber'),
+            'totalThoughts': node.get('totalThoughts'),
+            'nextThoughtNeeded': node.get('nextThoughtNeeded'),
+            'nodeId': node.get('nodeId'),
+            'parentId': node.get('parentId'),
+            'visits': node.get('visits'),
+            'valueEstimate': node.get('valueEstimate'),
+            'childNodes': node.get('childNodes', []),
+            'depth': node.get('depth'),
+            'action': node.get('action'),
+            'explorationConstant': node.get('explorationConstant'),
+            'nodeType': node.get('nodeType'),
+            'actionState': action_state
+        }
+        serializable_node_map[node_id] = serializable_node
+    
+    # Create trace data
+    trace_data = {
+        'query': user_query,
+        'node_map': serializable_node_map,
+        'root_nodes': mcts_manager.root_nodes,
+        'thought_history': [
+            {
+                'thought': thought.get('thought'),
+                'thoughtNumber': thought.get('thoughtNumber'),
+                'nodeId': thought.get('nodeId'),
+                'nodeType': thought.get('nodeType')
+            }
+            for thought in mcts_manager.thought_history
+        ],
+        'command_attempts': command_attempts
+    }
+    
+    # Write to file
+    with open(filepath, "w") as f:
+        json.dump(trace_data, f, indent=2)
+    
+    print(f"Saved complete MCTS trace to {filepath}")
+    return filepath
+
+def visualize_mcts_tree(mcts_manager, output_dir: Optional[str] = None) -> str:
+    """
+    Generate a text-based visualization of the MCTS tree structure.
+    
+    Args:
+        mcts_manager: The MCTSThinkingManager instance
+        output_dir (str, optional): Directory to save the visualization
+        
+    Returns:
+        str: Path to the generated visualization file
+    """
+    # Create output directory if not provided
+    if not output_dir:
+        output_dir = "mcts_visualizations"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Generate filename
+    filename = f"mcts_tree_{int(time.time())}.txt"
+    filepath = os.path.join(output_dir, filename)
+    
+    # Start with root nodes
+    lines = ["MCTS Tree Visualization", "=====================", ""]
+    
+    # Helper function to recursively build the tree visualization
+    def build_tree_visualization(node_id, depth=0, prefix=""):
+        node = mcts_manager.node_map.get(node_id)
+        if not node:
+            return []
+        
+        # Create node line
+        node_type = node.get('nodeType', 'unknown')
+        thought_num = node.get('thoughtNumber', 0)
+        value = node.get('valueEstimate', 0.0)
+        visits = node.get('visits', 0)
+        
+        # Truncate thought text
+        thought = node.get('thought', '')
+        if len(thought) > 50:
+            thought = thought[:47] + "..."
+        
+        # Add action info if it's an action node
+        action_info = ""
+        if node_type == "action" and node.get('action'):
+            action_info = f" | Action: {node.get('action')}"
+        
+        # Create the node line
+        node_line = f"{prefix}{'└── ' if depth > 0 else ''}[{node_type.upper()}] {thought_num} | Value: {value:.2f} | Visits: {visits}{action_info}"
+        lines.append(node_line)
+        
+        # Process child nodes
+        child_nodes = node.get('childNodes', [])
+        for i, child_id in enumerate(child_nodes):
+            is_last = i == len(child_nodes) - 1
+            new_prefix = prefix + ("    " if depth == 0 else "│   " if not is_last else "    ")
+            build_tree_visualization(child_id, depth + 1, new_prefix)
+    
+    # Process each root node
+    for root_id in mcts_manager.root_nodes:
+        build_tree_visualization(root_id)
+    
+    # Write to file
+    with open(filepath, "w") as f:
+        f.write("\n".join(lines))
+    
+    print(f"Saved MCTS tree visualization to {filepath}")
+    return filepath
+
+def evaluate_solution_with_llm(user_query: str, solution: str, client) -> str:
+    """
+    Evaluate if the solution answers the user query.
     
     Args:
         user_query (str): The original user query
-        solution (str): The derived solution
+        solution (str): The proposed solution
         client: The LLM client to use
-    
+        
     Returns:
-        tuple: (success_bool, evaluation_text)
+        str: Evaluation result
     """
     prompt = f"""
-    You are evaluating if this solution ANSWERS THE USER'S QUESTION.
-
-    User Query: "{user_query}"
+    Evaluate if the following solution answers the user query:
     
-    Proposed Solution:
-    ```
-    {solution}
-    ```
-
-    Determine if this solution satisfactorily answers what the user asked:
-
-    1. COMPLETE: Solution fully addresses the user's question
-       - Provides all information requested
-       - Answer is directly relevant to the query
-       - A reasonable user would be satisfied
-
-    2. PARTIAL: Solution partially addresses the user's question
-       - Some relevant information, but incomplete
-       - Missing important details requested in the query
-       - A user would need to ask follow-up questions
-
-    3. FAILURE: Solution fails to address the user's question
-       - Information is irrelevant or completely wrong
-       - Does not answer what was asked
-       - A user would need to restart their inquiry
-
-    Answer with COMPLETE, PARTIAL, or FAILURE and explain your reasoning.
+    User Query: "{user_query}"
+    Solution: "{solution}"
+    
+    Please provide:
+    1. COMPLETE or INCOMPLETE
+    2. Brief explanation
+    3. Any missing information
     """
-    # Create a proper model config
+    
     model_config = {
         "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
@@ -324,106 +412,93 @@ def evaluate_solution_with_llm(user_query, solution, client):
         "temperature": 0.7
     }
     
-    evaluation = query_llm(client, prompt, model_config)
-    success = "complete" in evaluation.lower()
-    
-    return success, evaluation
+    return query_llm(client, prompt, model_config)
 
-def generate_final_solution_with_llm(user_query, successful_commands, client):
+def generate_final_solution_with_llm(user_query: str, command_attempts: List[Dict[str, Any]], client) -> str:
     """
-    Generates a final solution based on successful command outputs.
+    Generate a final solution from successful command attempts.
     
     Args:
         user_query (str): The original user query
-        successful_commands (list of dicts): List of all commands and outputs
+        command_attempts (list): List of command attempts
         client: The LLM client to use
-    
+        
     Returns:
-        str: The final solution that answers the user query
+        str: The final solution
     """
-    # Combine all observations for a comprehensive solution
-    command_trace = "\n\n".join([
-        f"Command: {cmd['action_input']}\nOutput: {cmd['action_output']}"
-        for cmd in successful_commands
-    ])
+    # Filter successful attempts
+    successful_attempts = [a for a in command_attempts if a['status'] == CommandStatus.SUCCESS.value]
     
-    # Create a prompt to generate the final solution
-    solution_prompt = f"""
-    You will be given a successful trace of commands and outputs and your job is to
-    summarize the success in plain words so that the novice computer user can 
-    understand what worked and why it worked.
-
-    User Query: {user_query}
+    if not successful_attempts:
+        return "No successful commands to generate a solution from."
     
-    Command Trace: 
-    {command_trace}
+    # Format successful attempts
+    attempts_text = ""
+    for attempt in successful_attempts:
+        attempts_text += f"Command: {attempt['command']}\n"
+        attempts_text += f"Output: {attempt['result'][:500]}...\n"
+        attempts_text += "-" * 50 + "\n"
     
-    Remember, I am not asking for a solution because I already solved this problem. 
-    I am asking for a solution summary only.
+    prompt = f"""
+    Generate a final solution based on these successful command attempts:
+    
+    User Query: "{user_query}"
+    
+    Successful Attempts:
+    {attempts_text}
+    
+    Please provide a comprehensive solution that:
+    1. Directly answers the user query
+    2. Incorporates relevant information from the command outputs
+    3. Is clear and well-structured
     """
     
-    # Create a proper model config
     model_config = {
-        "model": "gpt-4o",
+        "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
-            {"role": "user", "content": solution_prompt}
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
         ],
-        "max_tokens": 8000,
+        "max_tokens": 32000,
         "temperature": 0.7
     }
     
-    # Generate the solution
-    solution_raw = query_llm(client, solution_prompt, model_config)
-    
-    # Clean up the solution
-    final_solution = remove_think_tags(solution_raw)
-    
-    return final_solution
+    return query_llm(client, prompt, model_config)
 
-def update_commands_with_llm(user_query, commands, command_index, cmd, observation_text, classification, client):
+def update_commands_with_llm(user_query: str, commands: List[Dict[str, Any]], command_index: int, 
+                           executed_command: str, output: str, classification: str, client) -> Tuple[bool, List[Dict[str, Any]], str]:
     """
-    Uses the LLM to update the command list based on the current command's output.
+    Determine if commands should be updated based on execution results.
     
     Args:
         user_query (str): The original user query
-        commands (list): List of commands to update
-        command_index (int): Index of the current command
-        cmd (str): The command that was executed
-        observation_text (str): Output from the command execution
-        classification (str): The classification of the command output
+        commands (list): List of commands
+        command_index (int): Index of the executed command
+        executed_command (str): The command that was executed
+        output (str): The command output
+        classification (str): The classification of the output
         client: The LLM client to use
-    
+        
     Returns:
         tuple: (should_update, updated_commands, update_response)
-            - should_update (bool): Whether the commands should be updated
-            - updated_commands (list): Updated list of commands
-            - update_response (str): Response from the LLM about the update
     """
-    # Limit the observation to a reasonable size
-    observation_lines = observation_text.splitlines()[:100]
-    observation_text = "\n".join(observation_lines)
-    
     prompt = f"""
-    Based on the following command execution:
+    Determine if the remaining commands should be updated based on this execution:
     
     User Query: "{user_query}"
+    Executed Command: "{executed_command}"
+    Output: "{output[:500]}..."
+    Classification: "{classification}"
     
-    Command executed:
-    {cmd}
+    Remaining Commands:
+    {json.dumps(commands[command_index+1:], indent=2)}
     
-    Command output:
-    ```
-    {observation_text}
-    ```
-    
-    Classification:
-    {classification}
-    
-    Please provide the next command to execute to answer the query.
-    Return ONLY the command, nothing else.
+    Please provide:
+    1. YES or NO for whether commands should be updated
+    2. Updated commands if YES (in JSON format)
+    3. Brief explanation
     """
     
-    # Create a proper model config
     model_config = {
         "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
@@ -434,169 +509,222 @@ def update_commands_with_llm(user_query, commands, command_index, cmd, observati
         "temperature": 0.7
     }
     
-    next_cmd = query_llm(client, prompt, model_config)
-    # Create a new command with the same action as the previous command
-    new_cmd = {"action": commands[command_index]["action"], "action_input": next_cmd.strip()}
-    commands[command_index + 1] = new_cmd
-    return True, commands, "Commands updated based on execution result"
+    response = query_llm(client, prompt, model_config)
+    
+    # Parse response
+    should_update = "YES" in response.upper()
+    updated_commands = commands
+    
+    if should_update:
+        try:
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                updated_commands = json.loads(json_match.group())
+        except:
+            pass
+    
+    return should_update, updated_commands, response
 
-def fix_failed_command_with_llm(user_query, cmd, observation_text, classification, client):
+def fix_failed_command_with_llm(user_query: str, command: Dict[str, Any], output: str, 
+                               classification: str, client) -> Tuple[Dict[str, Any], str]:
     """
-    When a command fails, prompts the LLM to fix just that one command.
+    Fix a failed command using the LLM.
     
     Args:
         user_query (str): The original user query
-        cmd (dict): The failed command dictionary with action and action_input keys
-        observation_text (str): The output of the failed command
-        classification (str): The classification of the failed command
+        command (dict): The failed command
+        output (str): The command output
+        classification (str): The classification of the output
         client: The LLM client to use
-    
+        
     Returns:
-        tuple: (fixed_command, llm_response)
+        tuple: (fixed_command, fix_response)
     """
-    import re
-    import os
+    prompt = f"""
+    Fix this failed command:
     
-    # Limit the observation to a reasonable size
-    observation_lines = observation_text.splitlines()[:100]
-    observation_text = "\n".join(observation_lines)
+    User Query: "{user_query}"
+    Failed Command: "{command['action_input']}"
+    Output: "{output[:500]}..."
+    Classification: "{classification}"
     
-    # Get relevant API documentation based on the command and error
-    api_context, doc_filename = get_relevant_api_docs(cmd['action_input'], observation_text)
-    
-    # Create the prompt for fixing the failed command
-    fix_prompt = f"""
-    User Query: {user_query}
-    
-    The following command failed:
-    ```
-    {cmd['action_input']}
-    ```
-    
-    Output:
-    {observation_text}
-    
-    Classification:
-    {classification}
-    
-    {api_context}
-    
-    IMPORTANT: ONLY fix this specific command syntax. DO NOT:
-    - Suggest multiple commands or a completely different approach
-    - Recommend tools or utilities not mentioned in the original command
-    - Propose alternative APIs or endpoints
-    - Change the fundamental approach
-    - DO NOT TRY TO USE ALTERNATIVES TO THE CORRECT BV-BRC SOLR CALL
-    - USE BV-BRC ONLY - USE BV-BRC ONLY - USE BV-BRC ONLY
-        --This means the "action" should be "bash" since that's how you make a SOLR query
-        --This also means the "action_input" should start with "curl" since that's how you make a SOLR query
-    - Consider if you should think about using a different endpoint.
-        --For example: consider genome to find genome ids before using genome_features
-    
-    Simply correct the syntax/parameters of THIS EXACT command to make it work.
-    Focus on addressing the specific issue that caused this command to fail.
-    
-    Your response should be in this format:
-    <fixed_command>
-    [the corrected command]
-    </fixed_command>
-    <explanation>
-    [brief explanation of what was fixed]
-    </explanation>
+    Please provide:
+    1. Fixed command (in JSON format)
+    2. Brief explanation of the fix
     """
     
-    # Create a proper model config
     model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
+        "model_id": "deepseek-ai/DeepSeek-R1",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": fix_prompt}
+            {"role": "user", "content": prompt}
         ],
         "max_tokens": 32000,
         "temperature": 0.7
     }
     
-    # Ask the LLM to fix the command
-    fix_response = query_llm(client, fix_prompt, model_config)
+    response = query_llm(client, prompt, model_config)
     
-    # Extract the fixed command from the LLM response
-    fixed_match = re.search(r'<fixed_command>(.*?)</fixed_command>', fix_response, re.DOTALL)
+    # Parse response
+    fixed_command = command
+    try:
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            fixed_command = json.loads(json_match.group())
+    except:
+        pass
     
-    if fixed_match:
-        # Create a new command dictionary with the fixed command
-        fixed_cmd = {
-            "action": cmd["action"],
-            "action_input": fixed_match.group(1).strip()
-        }
-    else:
-        # If no fixed command found, return the original command
-        fixed_cmd = cmd
-    
-    # Add documentation filename to response if it was accessed
-    if doc_filename:
-        fix_response = fix_response + f"\n<accessed_documentation>{doc_filename}</accessed_documentation>"
-    
-    # Return the updated cmd dictionary
-    return fixed_cmd, fix_response
+    return fixed_command, response
 
-def get_relevant_api_docs(cmd, error_text, api_docs_dir="api_docs"):
+def calculate_node_value(node):
     """
-    Extracts relevant API documentation based on the command and error message.
+    Calculate the value of a node based on its classification.
     
     Args:
-        cmd (str): The command that failed
-        error_text (str): The error output
-        api_docs_dir (str): Directory containing API documentation files
-    
-    Returns:
-        tuple: (api_context, doc_filename or None)
-    """
-    # Default empty context
-    api_context = "RELEVANT API INFORMATION:\nNo specific API documentation could be found for this error."
-    doc_filename = None
-    
-    # Check for common API errors
-    field_error_match = re.search(r"undefined field (\w+)", error_text)
-    endpoint_match = re.search(r"https?://[^/]+/api/(\w+)/", cmd)
-    
-    if field_error_match and endpoint_match:
-        # Get problematic field and endpoint
-        problem_field = field_error_match.group(1)
-        endpoint = endpoint_match.group(1)
+        node (dict): The node to calculate value for
         
-        # Try to read relevant API docs
-        docs_file = os.path.join(api_docs_dir, f"{endpoint}.txt")
-        if os.path.exists(docs_file):
-            doc_filename = f"{endpoint}.txt"
-            with open(docs_file, 'r') as f:
-                api_docs = f.read()
-            
-            # Include the complete API documentation
-            api_context = f"""
-            RELEVANT API DOCUMENTATION:
-            
-            Error involves undefined field '{problem_field}' in the '{endpoint}' API.
-            
-            COMPLETE API DOCUMENTATION for {endpoint}:
-            {api_docs}
-            
-            Important: ONLY use fields that are explicitly listed in the documentation above.
-            Do not use '{problem_field}' as it is undefined and not available.
-            
-            If you need to filter by genus/species, you should:
-            1. First query the genome API to get genome_ids
-            2. Then use those IDs with the genome_feature API
-            
-            Example pattern:
-            ```
-            # Get genome_id for Salmonella enterica
-            curl -s "https://www.bv-brc.org/api/genome/?eq(genus,Salmonella)&eq(species,enterica)&select(genome_id)&limit(1)"
-            
-            # Use genome_id to query features
-            curl -s "https://www.bv-brc.org/api/genome_feature/?eq(genome_id,GENOME_ID)&select(feature_id,product)&limit(10)"
-            ```
-            """
+    Returns:
+        float: The node's value (1.0 for success, 0.0 for failure)
+    """
+    classification = node.get('classification')
+    return 1.0 if classification and classification.status == CommandStatus.SUCCESS else 0.0
+
+def calculate_chain_value(node_id: str, mcts_manager) -> float:
+    """
+    Calculate the value of a chain of nodes from a given node to the root.
     
-    return api_context, doc_filename
+    Args:
+        node_id (str): The ID of the node to start from
+        mcts_manager: The MCTS manager containing the node map
+        
+    Returns:
+        float: The total value of the chain
+    """
+    chain_value = 0.0
+    current_node = mcts_manager.node_map.get(node_id)
+    
+    while current_node:
+        # Get the node's value estimate
+        value = current_node.get('valueEstimate', 0.0)
+        
+        # For command nodes, check if we have a classification
+        if current_node.get('nodeType') == NodeType.COMMAND.value:
+            value = calculate_node_value(current_node)
+        
+        chain_value += value
+        current_node = mcts_manager.node_map.get(current_node.get('parentId'))
+    
+    return chain_value
+
+def evaluate_attempt_with_llm(user_query: str, command_attempts: List[Dict[str, Any]], client) -> SolutionClassification:
+    """
+    Evaluate if the current attempts have reached a solution to the user query.
+    
+    Args:
+        user_query (str): The original user query
+        command_attempts (List[Dict[str, Any]]): List of command attempts so far
+        client: The LLM client to use
+        
+    Returns:
+        SolutionClassification: The classification of the solution
+    """
+    # Format command attempts for context
+    attempts_text = ""
+    for i, attempt in enumerate(command_attempts, 1):
+        attempts_text += f"\nAttempt {i}:\n"
+        attempts_text += f"Command: {attempt['command']}\n"
+        attempts_text += f"Result: {attempt['result'][:500]}...\n"
+        attempts_text += f"Status: {attempt['status']}\n"
+    
+    prompt = f"""
+    Evaluate if the following command attempts have reached a solution to the user query.
+    Your response must be in this exact format:
+    
+    Classification: COMPLETE or INCOMPLETE
+    Brief explanation: [your explanation here]
+    
+    User Query: "{user_query}"
+    
+    Command Attempts:{attempts_text}
+    """
+    
+    model_config = {
+        "model": "deepseek-ai/DeepSeek-R1",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 32000,
+        "temperature": 0.7
+    }
+    
+    response = query_llm(client, prompt, model_config)
+    
+    # Extract the classification line
+    classification_line = next(line for line in response.split('\n') if line.startswith('Classification:'))
+    status = classification_line.split(':')[1].strip()
+    
+    # Extract the explanation
+    explanation_line = next(line for line in response.split('\n') if line.startswith('Brief explanation:'))
+    explanation = explanation_line.split(':', 1)[1].strip()
+    
+    # Create and return the SolutionClassification
+    return SolutionClassification(
+        status=SolutionStatus(status),
+        reason=explanation
+    )
+
+def parse_classification_text(classification_text):
+    """
+    Parse a classification text into a CommandClassification object.
+    
+    Args:
+        classification_text (str): The classification text to parse
+        
+    Returns:
+        CommandClassification: A structured classification object
+    """
+    # Check for error indicators
+    error_indicators = ["error", "Error", "ERROR", "undefined field", "Database Error"]
+    if any(indicator in classification_text for indicator in error_indicators):
+        return CommandClassification(
+            status=CommandStatus.FAILURE,
+            reason="Error detected in response"
+        )
+    
+    # Try to find the classification and reason in the text
+    status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)|1\.\s*Classification\s*\((SUCCESS|FAILURE)\)', classification_text, re.IGNORECASE)
+    reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)|2\.\s*Brief explanation\s*:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
+    
+    if status_match:
+        # Extract status from either format
+        status = status_match.group(1) or status_match.group(2)
+        status = status.upper()
+        
+        # Extract reason if available
+        reason = ""
+        if reason_match:
+            reason = reason_match.group(1) or reason_match.group(2)
+            reason = reason.strip()
+        
+        # Create a CommandClassification object
+        return CommandClassification(
+            status=CommandStatus(status),
+            reason=reason
+        )
+    else:
+        # If we can't extract the structured data, try to infer from the text
+        if "SUCCESS" in classification_text.upper():
+            return CommandClassification(
+                status=CommandStatus.SUCCESS,
+                reason="Success inferred from text"
+            )
+        else:
+            return CommandClassification(
+                status=CommandStatus.FAILURE,
+                reason="Failure inferred from text"
+            )
 
 

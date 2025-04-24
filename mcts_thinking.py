@@ -10,7 +10,11 @@ import math
 import logging
 import random
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union
+from enum import Enum
+from dataclasses import dataclass
+import re
+import json
 
 from mcp.server.fastmcp import FastMCP
 
@@ -20,6 +24,32 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+class NodeType(Enum):
+    ROOT = "root"
+    THOUGHT = "thought"
+    COMMAND = "command"
+    SOLUTION = "solution"
+
+class CommandStatus(Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PENDING = "PENDING"
+
+@dataclass
+class ActionState:
+    """Represents the state of a command action."""
+    command: str
+    working_dir: str
+    environment: Dict[str, str]
+    dependencies: List[str]  # List of command IDs this action depends on
+    prerequisites: List[str]  # List of conditions that must be met
+    command_output: Optional[str] = None
+    exit_code: Optional[int] = None
+    execution_time: Optional[float] = None
+    resource_usage: Optional[Dict[str, float]] = None
+    error_message: Optional[str] = None
+    status: CommandStatus = CommandStatus.PENDING
 
 class MCTSThinkingManager:
     """Monte Carlo Tree Search enhanced sequential thinking manager."""
@@ -71,6 +101,27 @@ class MCTSThinkingManager:
         action = input_data.get('action') if isinstance(input_data.get('action'), str) else None
         exploration_constant = input_data.get('explorationConstant') if isinstance(input_data.get('explorationConstant'), float) else self.exploration_constant
         
+        # Add node type and command-specific fields
+        node_type = input_data.get('nodeType', NodeType.THOUGHT.value)
+        
+        # Handle action-specific state
+        action_state = None
+        if node_type == NodeType.COMMAND.value:
+            # Create ActionState object
+            action_state = ActionState(
+                command=input_data.get('action', ''),
+                working_dir=input_data.get('workingDir', ''),
+                environment=input_data.get('environment', {}),
+                dependencies=input_data.get('dependencies', []),
+                prerequisites=input_data.get('prerequisites', []),
+                command_output=input_data.get('commandOutput', ''),
+                exit_code=input_data.get('exitCode'),
+                execution_time=input_data.get('executionTime'),
+                resource_usage=input_data.get('resourceUsage', {}),
+                error_message=input_data.get('errorMessage', ''),
+                status=CommandStatus(input_data.get('commandStatus', CommandStatus.PENDING.value))
+            )
+        
         return {
             # Original sequential thinking fields
             'thought': input_data['thought'],
@@ -91,56 +142,174 @@ class MCTSThinkingManager:
             'childNodes': child_nodes,
             'depth': depth,
             'action': action,
-            'explorationConstant': exploration_constant
+            'explorationConstant': exploration_constant,
+            
+            # Node type and command-specific fields
+            'nodeType': node_type,
+            'actionState': action_state
         }
     
-    def calculate_ucb(self, node: Dict[str, Any]) -> float:
-        """Calculate Upper Confidence Bound (UCB1) score for a node."""
-        # If no visits, treat as infinity (ensure exploration)
-        if node['visits'] == 0:
+    def calculate_ucb_score(self, node: Dict[str, Any], parent_visits: int) -> float:
+        """
+        Calculate UCB1 score for node selection.
+        Now adjusts exploration based on failure context.
+        
+        Args:
+            node (Dict[str, Any]): Node to calculate score for
+            parent_visits (int): Number of visits to parent node
+            
+        Returns:
+            float: UCB1 score for the node
+        """
+        # Base exploration constant
+        exploration_constant = self.exploration_constant
+        
+        # Adjust exploration based on node context
+        node_type = node.get('nodeType')
+        if node_type == NodeType.COMMAND.value:
+            result = node.get('result', {})
+            if result.get('success') is False:
+                error = result.get('error', '')
+                
+                # Increase exploration for failed nodes
+                if 'undefined field' in error:
+                    # Field errors suggest we're close - explore more
+                    exploration_constant *= 1.5
+                elif 'syntax error' in error:
+                    # Syntax errors need more exploration of variations
+                    exploration_constant *= 2.0
+                elif 'timeout' in error:
+                    # Timeouts might work with retry - moderate exploration
+                    exploration_constant *= 1.3
+                else:
+                    # Other errors - significant exploration needed
+                    exploration_constant *= 2.5
+                    
+        # Calculate exploitation term
+        visits = node.get('visits', 0)
+        if visits == 0:
             return float('inf')
+            
+        value = node.get('value', 0.0)
+        exploitation = value / visits
         
-        parent_node = self.node_map.get(node['parentId']) if node.get('parentId') else None
-        parent_visits = parent_node['visits'] if parent_node else node['visits']
+        # Calculate exploration term
+        exploration = exploration_constant * math.sqrt(math.log(parent_visits) / visits)
         
-        # UCB1 formula: value + C * sqrt(ln(parentVisits) / visits)
-        exploration_term = math.sqrt(math.log(parent_visits) / node['visits'])
-        return node['valueEstimate'] + (node.get('explorationConstant', self.exploration_constant) * exploration_term)
+        return exploitation + exploration
     
-    def get_recommended_nodes(self) -> List[Dict[str, Any]]:
-        """Get node recommendations based on UCB scores."""
-        # Get all leaf nodes that need more thinking
-        leaf_nodes = [
-            node for node in self.node_map.values() 
-            if len(node['childNodes']) == 0 and node['nextThoughtNeeded']
-        ]
+    def get_recommended_nodes(self):
+        """
+        Get recommended nodes based on MCTS exploration.
         
-        # Calculate UCB score for each
-        scored_nodes = [
-            {
-                'nodeId': node['nodeId'],
-                'ucbScore': self.calculate_ucb(node),
-                'thought': (node['thought'][:50] + '...') if len(node['thought']) > 50 else node['thought']
-            } 
-            for node in leaf_nodes
-        ]
+        Returns:
+            list: List of recommended nodes with their scores
+        """
+        recommendations = []
         
-        # Sort by UCB score (descending)
-        return sorted(scored_nodes, key=lambda x: x['ucbScore'], reverse=True)
+        # Get all nodes that haven't failed
+        valid_nodes = []
+        for node_id, node in self.node_map.items():
+            # Skip nodes that have failed
+            if node.get('classification') and node['classification'].status == CommandStatus.FAILURE:
+                continue
+            
+            # Calculate UCB score
+            visits = node.get('visits', 0)
+            value = node.get('valueEstimate', 0.0)
+            parent_visits = 0
+            if node.get('parentId'):
+                parent = self.node_map.get(node['parentId'])
+                if parent:
+                    parent_visits = parent.get('visits', 0)
+                
+            # UCB formula with exploration bonus
+            if visits == 0:
+                ucb_score = float('inf')  # Encourage exploring unvisited nodes
+            else:
+                exploitation = value
+                exploration = math.sqrt(2 * math.log(parent_visits + 1) / visits)
+                ucb_score = exploitation + exploration
+            
+            # Adjust score based on node type and context
+            if node.get('nodeType') == NodeType.COMMAND.value:
+                # If parent node failed, increase exploration
+                if parent and parent.get('classification') and parent['classification'].status == CommandStatus.FAILURE:
+                    ucb_score *= 1.5  # Encourage exploring different commands
+                # If parent succeeded, slightly favor continuing sequence
+                elif parent and parent.get('classification') and parent['classification'].status == CommandStatus.SUCCESS:
+                    ucb_score *= 1.2  # Slightly favor continuing successful sequences
+            
+            valid_nodes.append({
+                'nodeId': node_id,
+                'score': ucb_score,
+                'visits': visits,
+                'value': value
+            })
+        
+        # Sort by UCB score
+        valid_nodes.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Return top recommendations
+        return valid_nodes[:5]  # Return top 5 recommendations
     
-    def update_node_value(self, node_id: str, new_value: float) -> None:
-        """Update node value and propagate changes upward (backpropagation)."""
-        node = self.node_map.get(node_id)
-        if not node:
-            return
+    def update_node_value(self, node: Dict[str, Any], value: float) -> None:
+        """
+        Update node value and propagate up the tree.
+        Now handles failure cases with partial credit based on error type.
         
-        # Update this node's value estimate with the new sample
-        node['visits'] += 1
-        node['valueEstimate'] = ((node['visits'] - 1) * node['valueEstimate'] + new_value) / node['visits']
+        Args:
+            node (Dict[str, Any]): Node to update
+            value (float): New value to incorporate
+        """
+        # For action nodes, check result and adjust value
+        if node.get('nodeType') == NodeType.COMMAND.value:
+            result = node.get('result', {})
+            if result.get('success') is False:
+                error = result.get('error', '')
+                
+                # Check if this is a retry of a failed command
+                parent = self.node_map.get(node.get('parentId'))
+                if parent and parent.get('nodeType') == NodeType.COMMAND.value:
+                    if parent.get('action') == node.get('action'):
+                        # Retrying the same failed command gets a strong negative value
+                        value = -1.0
+                    else:
+                        # Different command, assign partial credit based on error type
+                        if 'undefined field' in error:
+                            value = 0.3
+                        elif 'syntax error' in error:
+                            value = 0.2
+                        elif 'timeout' in error:
+                            value = 0.1
+                        else:
+                            value = 0.05
+                else:
+                    # First attempt at a command, assign partial credit
+                    if 'undefined field' in error:
+                        value = 0.3
+                    elif 'syntax error' in error:
+                        value = 0.2
+                    elif 'timeout' in error:
+                        value = 0.1
+                    else:
+                        value = 0.05
+                    
+        # Update node statistics
+        node['visits'] = node.get('visits', 0) + 1
+        node['value'] = node.get('value', 0.0) + value
         
-        # Recursively update parent nodes (backpropagation)
-        if node.get('parentId'):
-            self.update_node_value(node['parentId'], new_value)
+        # Propagate up the tree
+        parent_id = node.get('parentId')
+        if parent_id:
+            parent = self.node_map.get(parent_id)
+            if parent:
+                # For thought nodes, use max value
+                if parent.get('nodeType') == NodeType.THOUGHT.value:
+                    self.update_node_value(parent, max(value, parent.get('value', 0.0)))
+                # For action nodes, use average
+                else:
+                    self.update_node_value(parent, value)
     
     def format_thought(self, thought_data: Dict[str, Any]) -> str:
         """Format thought data for display."""
@@ -154,7 +323,7 @@ class MCTSThinkingManager:
             prefix = '🌿 Branch'
             context = f" (from thought {thought_data.get('branchFromThought')}, ID: {thought_data.get('branchId')})"
         else:
-            prefix = '💭 Thought'
+            prefix = '💭 Thought' if thought_data['nodeType'] == NodeType.THOUGHT.value else '⚡ Action'
             context = ''
         
         header = f"{prefix} {thought_data['thoughtNumber']}/{thought_data['totalThoughts']}{context}"
@@ -164,6 +333,13 @@ class MCTSThinkingManager:
         
         mcts_info = f"Node: {node_id_short} | Parent: {parent_id_short} | Visits: {thought_data['visits']} | " \
                     f"Value: {thought_data['valueEstimate']:.3f} | Depth: {thought_data['depth']}"
+        
+        # Add action-specific info if this is an action node
+        if thought_data['nodeType'] == NodeType.COMMAND.value and thought_data.get('actionState'):
+            action_state = thought_data['actionState']
+            mcts_info += f" | Command: {action_state.command} | Status: {action_state.status.value}"
+            if action_state.error_message:
+                mcts_info += f" | Error: {action_state.error_message[:50]}..."
         
         # Calculate border width
         max_width = max(len(header), len(mcts_info), len(thought_data['thought']))
@@ -181,10 +357,57 @@ class MCTSThinkingManager:
         
         return '\n'.join(lines)
     
+    def extract_commands_from_thought(self, thought: str) -> List[str]:
+        """Extract commands from a thought's content."""
+        # Look for <action> tags
+        action_pattern = r'<action>(.*?)</action>'
+        action_matches = re.findall(action_pattern, thought, re.DOTALL)
+        
+        if not action_matches:
+            return []
+        
+        # Parse the JSON array inside the action tags
+        try:
+            actions = json.loads(action_matches[0])
+            return [action['action_input'] for action in actions if 'action_input' in action]
+        except json.JSONDecodeError:
+            return []
+
     def process_thought(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process a thought and return the response."""
         try:
             validated_input = self.validate_thought_data(input_data)
+            
+            # Extract commands if this is a thought node
+            if validated_input['nodeType'] == NodeType.THOUGHT.value:
+                commands = self.extract_commands_from_thought(validated_input['thought'])
+                if commands:
+                    # Create the first action node as child of thought
+                    first_action = {
+                        'nodeId': self.generate_node_id(),
+                        'parentId': validated_input['nodeId'],
+                        'nodeType': NodeType.COMMAND.value,
+                        'action': commands[0],
+                        'status': CommandStatus.PENDING.value,
+                        'depth': validated_input['depth'] + 1
+                    }
+                    self.node_map[first_action['nodeId']] = first_action
+                    validated_input['childNodes'].append(first_action['nodeId'])
+                    
+                    # Create subsequent action nodes, each as child of previous action
+                    current_parent = first_action
+                    for command in commands[1:]:
+                        next_action = {
+                            'nodeId': self.generate_node_id(),
+                            'parentId': current_parent['nodeId'],
+                            'nodeType': NodeType.COMMAND.value,
+                            'action': command,
+                            'status': CommandStatus.PENDING.value,
+                            'depth': current_parent['depth'] + 1
+                        }
+                        self.node_map[next_action['nodeId']] = next_action
+                        current_parent['childNodes'] = [next_action['nodeId']]
+                        current_parent = next_action
             
             # Adjust total thoughts if needed
             if validated_input['thoughtNumber'] > validated_input['totalThoughts']:
@@ -211,7 +434,7 @@ class MCTSThinkingManager:
             logger.info(formatted_thought)
             
             # Get node recommendations based on UCB scores
-            recommendations = self.get_recommended_nodes()[:3]
+            recommendations = self.get_recommended_nodes()
             
             # Calculate tree statistics
             all_nodes = list(self.node_map.values())
@@ -242,6 +465,154 @@ class MCTSThinkingManager:
                 'error': str(e),
                 'status': 'failed'
             }
+
+    def select_node(self, node_id: str) -> str:
+        """
+        Select the next node to explore using UCB1.
+        Now handles transitions between thought and action nodes.
+        
+        Args:
+            node_id (str): ID of the current node
+            
+        Returns:
+            str: ID of the selected child node
+        """
+        node = self.node_map.get(node_id)
+        if not node:
+            return None
+            
+        # Get all child nodes
+        children = [
+            child for child in self.node_map.values()
+            if child.get('parentId') == node_id
+        ]
+        
+        if not children:
+            return None
+            
+        # Calculate UCB scores for all children
+        parent_visits = node.get('visits', 0)
+        scored_children = [
+            {
+                'node': child,
+                'ucbScore': self.calculate_ucb_score(child, parent_visits)
+            }
+            for child in children
+        ]
+        
+        # Sort by UCB score
+        scored_children.sort(key=lambda x: x['ucbScore'], reverse=True)
+        
+        # Consider node types in selection
+        current_type = node.get('nodeType')
+        
+        if current_type == NodeType.THOUGHT.value:
+            # For thought nodes, prefer exploring new actions
+            action_children = [
+                child for child in scored_children
+                if child['node'].get('nodeType') == NodeType.COMMAND.value
+            ]
+            
+            if action_children:
+                # Prioritize unvisited actions
+                unvisited_actions = [
+                    action for action in action_children
+                    if action['node'].get('visits', 0) == 0
+                ]
+                if unvisited_actions:
+                    return unvisited_actions[0]['node']['id']
+                    
+                # Otherwise use UCB for actions
+                return action_children[0]['node']['id']
+                
+        elif current_type == NodeType.COMMAND.value:
+            # For action nodes, prefer exploring new thoughts
+            thought_children = [
+                child for child in scored_children
+                if child['node'].get('nodeType') == NodeType.THOUGHT.value
+            ]
+            
+            if thought_children:
+                # Prioritize unvisited thoughts
+                unvisited_thoughts = [
+                    thought for thought in thought_children
+                    if thought['node'].get('visits', 0) == 0
+                ]
+                if unvisited_thoughts:
+                    return unvisited_thoughts[0]['node']['id']
+                    
+                # Otherwise use UCB for thoughts
+                return thought_children[0]['node']['id']
+                
+        # Default to highest UCB score if no type-specific selection
+        return scored_children[0]['node']['id']
+
+    def expand_node(self, node_id: str) -> str:
+        """
+        Expand the current node by adding a new child node.
+        Now handles expansion after failures by considering alternative approaches.
+        
+        Args:
+            node_id (str): ID of the current node
+            
+        Returns:
+            str: ID of the newly created child node
+        """
+        node = self.node_map.get(node_id)
+        if not node:
+            return None
+            
+        # Get node type and context
+        node_type = node.get('nodeType')
+        parent_thought = None
+        
+        # If expanding from an action node, get the parent thought
+        if node_type == NodeType.COMMAND.value:
+            parent_thought = self.node_map.get(node.get('parentId'))
+            
+        # Create new node based on type
+        if node_type == NodeType.THOUGHT.value:
+            # After a thought, try an action
+            new_node = {
+                'id': f'node_{int(time.time()*1000)}_{random.randint(1000, 9999)}',
+                'nodeType': NodeType.COMMAND.value,
+                'parentId': node_id,
+                'visits': 0,
+                'value': 0.0,
+                'thought': node.get('thought', ''),
+                'action': '',  # Will be filled by the action generation
+                'result': None
+            }
+            
+        elif node_type == NodeType.COMMAND.value:
+            # After an action, create a new thought
+            # If the action failed, consider alternative approaches
+            if node.get('result', {}).get('success') is False:
+                # Get failure context
+                error = node.get('result', {}).get('error', '')
+                action = node.get('action', '')
+                
+                # Create thought about alternative approach
+                new_thought = f"Previous action failed with error: {error}. Considering alternative approach..."
+                
+            else:
+                # Normal expansion after successful action
+                new_thought = "Evaluating the result and considering next steps..."
+                
+            new_node = {
+                'id': f'node_{int(time.time()*1000)}_{random.randint(1000, 9999)}',
+                'nodeType': NodeType.THOUGHT.value,
+                'parentId': node_id,
+                'visits': 0,
+                'value': 0.0,
+                'thought': new_thought,
+                'action': None,
+                'result': None
+            }
+            
+        # Add the new node to the tree
+        self.node_map[new_node['id']] = new_node
+        return new_node['id']
 
 # Create an MCP server instance
 mcp = FastMCP("MCTS Thinking")

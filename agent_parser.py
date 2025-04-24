@@ -1,6 +1,10 @@
 import re
 import os,sys,json
 from helper_functions import query_llm, remove_think_tags
+from typing import Dict, List, Any, Optional, Tuple
+from enum import Enum
+import openai
+from mcts_thinking import NodeType
 
 # Add the sanitize_filename function at the top of the file, before main()
 def sanitize_filename(filename):
@@ -139,7 +143,7 @@ Text to extract from:
 {content}"""
 
     # Call LLM with the prompt
-    # Create a proper model config
+    # Create a proper x config
     model_config = {
         "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
@@ -165,6 +169,276 @@ Text to extract from:
         print(f"Errored on Response:\n{response}")
         return []
 
+class ActionType(Enum):
+    BASH = "bash"
+    PYTHON = "python"
+    MCTS = "mcts"
+
+class MCTSState:
+    def __init__(self, node_type: NodeType, content: Dict[str, Any]):
+        self.node_type = node_type
+        self.content = content
+        self.children: List[MCTSState] = []
+        self.parent: Optional[MCTSState] = None
+        self.value: float = 0.0
+        self.visits: int = 0
+
+    def add_child(self, child: 'MCTSState') -> None:
+        child.parent = self
+        self.children.append(child)
+
+    def update_value(self, new_value: float) -> None:
+        self.value = (self.value * self.visits + new_value) / (self.visits + 1)
+        self.visits += 1
+
+def parse_content(content: str, content_type: str, openai_client) -> Dict[str, Any]:
+    """
+    Parse content into a structured format.
+    
+    Args:
+        content (str): The content to parse
+        content_type (str): The type of content (action, think, answer)
+        openai_client: The OpenAI client to use
+        
+    Returns:
+        dict: Structured content
+    """
+    # Create a copy with double curly braces replaced for parsing
+    parsing_content = content.replace('{{', '{').replace('}}', '}')
+    if is_valid_json(parsing_content):
+        return json.loads(parsing_content)
+    
+    # If not valid JSON, use LLM to parse
+    examples = {
+        "action": """
+Example action node:
+{
+    "action": "bash",
+    "action_input": "ls -la",
+    "reasoning": "Checking directory contents to understand the current state",
+    "confidence": 0.9
+}
+
+Example action node with multiple steps:
+{
+    "action": "python",
+    "action_input": "import pandas as pd; df = pd.read_csv('data.csv')",
+    "reasoning": "Loading data for analysis",
+    "confidence": 0.85
+}""",
+        "think": """
+Example thought node:
+{
+    "thought": "I need to analyze the current state and plan next steps",
+    "reasoning": "The system needs to understand the context before taking action",
+    "confidence": 0.95,
+    "next_steps": ["check environment", "validate inputs", "plan execution"]
+}
+
+Example thought node with analysis:
+{
+    "thought": "The data structure suggests we need to transform it",
+    "reasoning": "Current format doesn't match required schema",
+    "confidence": 0.8,
+    "analysis": {
+        "current_format": "nested",
+        "required_format": "flat",
+        "transformation_needed": true
+    }
+}"""
+    }
+    
+    prompt = f"""
+    Parse this {content_type} content into a structured format.
+    
+    Here are examples of valid {content_type} node formats:
+    {examples.get(content_type, "")}
+    
+    Content to parse:
+    {content}
+    
+    Please provide the output in valid JSON format following the example structure above.
+    """
+    
+    model_config = {
+        "model_id": "gpt-4o",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "max_completion_tokens": 32000,
+        "temperature": 0.7
+    }
+    
+    response = query_llm(openai_client, prompt, model_config)
+    return json.loads(response)
+
+def parse_action_content(action_content: str, openai_client) -> List[Dict[str, Any]]:
+    """
+    Parse action content into a list of action dictionaries.
+    
+    Args:
+        action_content (str): The action content to parse
+        openai_client: The OpenAI client to use
+        
+    Returns:
+        list: List of action dictionaries
+    """
+    return parse_content(action_content, "action", openai_client)
+
+def parse_think_content(think_content: str, openai_client) -> Dict[str, Any]:
+    """
+    Parse think content into a structured format.
+    
+    Args:
+        think_content (str): The think content to parse
+        openai_client: The OpenAI client to use
+        
+    Returns:
+        dict: Structured think content
+    """
+    return parse_content(think_content, "think", openai_client)
+
+def parse_answer_content(answer_content: str, openai_client) -> Dict[str, Any]:
+    """
+    Parse answer content into a structured format.
+    
+    Args:
+        answer_content (str): The answer content to parse
+        openai_client: The OpenAI client to use
+        
+    Returns:
+        dict: Structured answer content
+    """
+    return parse_content(answer_content, "answer", openai_client)
+
+def create_mcts_state(node_type: NodeType, content: Dict[str, Any]) -> MCTSState:
+    """
+    Create a new MCTS state.
+    
+    Args:
+        node_type (NodeType): The type of node
+        content (dict): The node content
+        
+    Returns:
+        MCTSState: The created state
+    """
+    return MCTSState(node_type, content)
+
+def parse_mcts_action(action: Dict[str, Any]) -> Tuple[NodeType, str]:
+    """
+    Parse an MCTS action into type and input.
+    
+    Args:
+        action (dict): The action to parse
+        
+    Returns:
+        tuple: (node_type, action_input)
+    """
+    node_type = NodeType(action.get("action", "action"))
+    action_input = action.get("action_input", "")
+    return node_type, action_input
+
+def validate_mcts_state(state: MCTSState) -> bool:
+    """
+    Validate an MCTS state.
+    
+    Args:
+        state (MCTSState): The state to validate
+        
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    if not state.content:
+        return False
+    
+    if state.node_type == NodeType.COMMAND:
+        if "action" not in state.content or "action_input" not in state.content:
+            return False
+    
+    if state.node_type == NodeType.SOLUTION:
+        if "result" not in state.content:
+            return False
+    
+    return True
+
+def get_mcts_action_space(state: MCTSState) -> List[NodeType]:
+    """
+    Get the action space for an MCTS state.
+    
+    Args:
+        state (MCTSState): The current state
+        
+    Returns:
+        list: List of possible actions
+    """
+    if state.node_type == NodeType.COMMAND:
+        return [NodeType.THOUGHT, NodeType.SOLUTION]
+
+def get_mcts_state_value(state: MCTSState) -> float:
+    """
+    Get the value of an MCTS state.
+    
+    Args:
+        state (MCTSState): The state to evaluate
+        
+    Returns:
+        float: The state value
+    """
+    if state.node_type == NodeType.SOLUTION:
+        # Solution nodes have direct value
+        return state.content.get("value", 0.0)
+    else:
+        # Other nodes have value based on children
+        if not state.children:
+            return 0.0
+        return max(child.value for child in state.children)
+
+def format_mcts_state(state: MCTSState) -> str:
+    """
+    Format an MCTS state as a string.
+    
+    Args:
+        state (MCTSState): The state to format
+        
+    Returns:
+        str: Formatted state string
+    """
+    if state.node_type == NodeType.ROOT:
+        return f"ROOT: {json.dumps(state.content)}"
+    elif state.node_type == NodeType.COMMAND:
+        formatted_state = f"Command: {state.content['action']}\n"
+    else:
+        formatted_state = f"SOLUTION: {state.content.get('text', '')[:100]}..."
+    return formatted_state
+
+def get_mcts_state_path(state: MCTSState) -> List[MCTSState]:
+    """
+    Get the path from root to the given state.
+    
+    Args:
+        state (MCTSState): The target state
+        
+    Returns:
+        list: List of states from root to target
+    """
+    path = []
+    current = state
+    while current:
+        path.append(current)
+        current = current.parent
+    return list(reversed(path))
+
+def format_mcts_path(path: List[MCTSState]) -> str:
+    """
+    Format an MCTS path as a string.
+    
+    Args:
+        path (list): List of states in the path
+        
+    Returns:
+        str: Formatted path string
+    """
+    return " -> ".join(format_mcts_state(state) for state in path)
 
 def parse_commands(response_to_call, together_client=None):
     """
