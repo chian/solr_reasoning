@@ -14,8 +14,11 @@ import io
 import openai  # Add OpenAI import for o1-pro model
 
 from agent_parser import test_parse_commands, sanitize_filename, parse_commands, extract_commands_with_llm   
-from helper_functions import query_llm, derive_solution_with_llm, classify_last_command_output_with_llm, parse_last_command_output_with_llm, generate_training_output, evaluate_solution_with_llm, generate_final_solution_with_llm, update_commands_with_llm, fix_failed_command_with_llm, remove_think_tags, CommandClassification, CommandStatus
+from helper_functions import query_llm, derive_solution_with_llm, classify_last_command_output_with_llm, parse_last_command_output_with_llm, generate_training_output, evaluate_attempt_with_llm, generate_final_solution_with_llm, update_commands_with_llm, remove_think_tags, CommandClassification, CommandStatus, SolutionClassification, SolutionStatus, save_mcts_trace, visualize_mcts_tree, calculate_node_value, calculate_chain_value
+from mcts_thinking import MCTSThinkingManager, NodeType, CommandStatus as MCTSCommandStatus, ActionState
 
+# Initialize MCTS manager
+mcts_manager = MCTSThinkingManager()
 
 def parse_classification_text(classification_text):
     """
@@ -27,14 +30,20 @@ def parse_classification_text(classification_text):
     Returns:
         CommandClassification: A structured classification object
     """
-
     # Try to find the classification and reason in the text
-    status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)', classification_text, re.IGNORECASE)
-    reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
+    status_match = re.search(r'Classification:\s*(SUCCESS|FAILURE)|1\.\s*Classification\s*\((SUCCESS|FAILURE)\)', classification_text, re.IGNORECASE)
+    reason_match = re.search(r'Brief explanation:\s*(.*?)(?:\n\n|\Z)|2\.\s*Brief explanation\s*:\s*(.*?)(?:\n\n|\Z)', classification_text, re.DOTALL)
     
-    if status_match and reason_match:
-        status = status_match.group(1).upper()
-        reason = reason_match.group(1).strip()
+    if status_match:
+        # Extract status from either format
+        status = status_match.group(1) or status_match.group(2)
+        status = status.upper()
+        
+        # Extract reason if available
+        reason = ""
+        if reason_match:
+            reason = reason_match.group(1) or reason_match.group(2)
+            reason = reason.strip()
         
         # Create a CommandClassification object
         return CommandClassification(
@@ -42,11 +51,17 @@ def parse_classification_text(classification_text):
             reason=reason
         )
     else:
-        # If we can't extract the structured data, return a default failure
-        return CommandClassification(
-            status=CommandStatus.FAILURE,
-            reason="Failed to parse classification text"
-        )
+        # If we can't extract the structured data, try to infer from the text
+        if "SUCCESS" in classification_text.upper():
+            return CommandClassification(
+                status=CommandStatus.SUCCESS,
+                reason="Success inferred from text"
+            )
+        else:
+            return CommandClassification(
+                status=CommandStatus.FAILURE,
+                reason="Failure inferred from text"
+            )
 
 # Get API keys from environment variables
 together_api_key = os.getenv('TOGETHER_API_KEY')
@@ -83,7 +98,7 @@ OPENAI_CONFIG = {
     "messages": [
         {"role": "user", "content": "You are a helpful assistant.\n\n{user_query}"}
     ],
-    "max_tokens": 32000,
+    "max_completion_tokens": 32000,
     "temperature": 0.7
 }
 
@@ -106,6 +121,165 @@ with open('solr_superprompt.txt','r') as i:
 
 # Create a template that handles the nested format
 CoT_template = PromptTemplate.from_template(textwrap.dedent(cot_template_text))
+
+def initialize_mcts_state(user_query):
+    """
+    Initialize the MCTS state with the user query.
+    
+    Args:
+        user_query (str): The user's query
+        
+    Returns:
+        dict: The initial MCTS state
+    """
+    # Create initial state
+    initial_state = {
+        'thought': f"Initial state for query: {user_query}",
+        'thoughtNumber': 1,
+        'totalThoughts': 10,  # Estimate
+        'nextThoughtNeeded': True,
+        'nodeType': NodeType.THOUGHT.value,
+        'workingDir': os.getcwd(),
+        'environment': dict(os.environ),
+        'dependencies': [],
+        'prerequisites': []
+    }
+    
+    # Process the initial thought
+    return mcts_manager.process_thought(initial_state)
+
+def get_next_action_from_mcts(current_state, possible_actions):
+    """
+    Get the next action using MCTS.
+    
+    Args:
+        current_state (dict): The current MCTS state
+        possible_actions (list): List of possible actions
+        
+    Returns:
+        tuple: (best_action, action_node)
+    """
+    # Get recommendations from MCTS
+    recommendations = mcts_manager.get_recommended_nodes()
+    
+    # Get the current node
+    current_node_id = current_state['currentNodeId']
+    current_node = mcts_manager.node_map.get(current_node_id)
+    
+    if not current_node:
+        return None, None
+        
+    # If we have recommendations, evaluate them
+    if recommendations:
+        best_recommendation = recommendations[0]
+        best_node_id = best_recommendation['nodeId']
+        best_node = mcts_manager.node_map.get(best_node_id)
+        
+        # If the best node is an action node with an action state, use it
+        if best_node and best_node.get('nodeType') == NodeType.COMMAND.value and best_node.get('actionState'):
+            return best_node['actionState'].command, best_node
+            
+        # If the best node is a thought node, we can either:
+        # 1. Generate a new thought
+        # 2. Create an action from this thought
+        if best_node and best_node.get('nodeType') == NodeType.THOUGHT.value:
+            if possible_actions:
+                # Create a new action node from this thought
+                action_data = {
+                    'thought': f"Executing command: {possible_actions[0]}",
+                    'thoughtNumber': current_state['thoughtNumber'] + 1,
+                    'totalThoughts': current_state['totalThoughts'],
+                    'nextThoughtNeeded': True,
+                    'nodeType': NodeType.COMMAND.value,
+                    'action': possible_actions[0],
+                    'workingDir': os.getcwd(),
+                    'environment': dict(os.environ),
+                    'dependencies': [],
+                    'prerequisites': [],
+                    'parentId': best_node_id  # Connect to the thought node
+                }
+                
+                new_state = mcts_manager.process_thought(action_data)
+                new_node = mcts_manager.node_map.get(new_state['currentNodeId'])
+                
+                if new_node and new_node.get('actionState'):
+                    return new_node['actionState'].command, new_node
+    
+    # If no suitable recommendation found and we have possible actions,
+    # create a new action node from the current node
+    if possible_actions:
+        action_data = {
+            'thought': f"Executing command: {possible_actions[0]}",
+            'thoughtNumber': current_state['thoughtNumber'] + 1,
+            'totalThoughts': current_state['totalThoughts'],
+            'nextThoughtNeeded': True,
+            'nodeType': NodeType.COMMAND.value,
+            'action': possible_actions[0],
+            'workingDir': os.getcwd(),
+            'environment': dict(os.environ),
+            'dependencies': [],
+            'prerequisites': [],
+            'parentId': current_node_id
+        }
+        
+        new_state = mcts_manager.process_thought(action_data)
+        new_node = mcts_manager.node_map.get(new_state['currentNodeId'])
+        
+        if new_node and new_node.get('actionState'):
+            return new_node['actionState'].command, new_node
+    
+    return None, None
+
+def update_mcts_with_command_result(mcts_manager, command, result, classification):
+    """
+    Update MCTS with command execution results.
+    
+    Args:
+        mcts_manager: The MCTS manager
+        command (str): The command that was executed
+        result (str): The command output
+        classification (CommandClassification): The classification of the command result
+        
+    Returns:
+        dict: The updated MCTS state
+    """
+    # Calculate value based on classification
+    value = 1.0 if classification.status == CommandStatus.SUCCESS else 0.0
+    
+    # Find the node with this command
+    node = None
+    for node_id, node_data in mcts_manager.node_map.items():
+        if node_data.get('actionState') and node_data['actionState'].command == command:
+            node = node_data
+            break
+    
+    if node:
+        # Update node's value estimate
+        current_value = node.get('valueEstimate', 0.0)
+        visits = node.get('visits', 0)
+        node['valueEstimate'] = (current_value * visits + value) / (visits + 1)
+        node['visits'] = visits + 1
+        
+        # Propagate value up the tree
+        parent_id = node.get('parentId')
+        while parent_id:
+            parent = mcts_manager.node_map.get(parent_id)
+            if parent:
+                # For thought nodes, use max value
+                if parent.get('nodeType') == NodeType.THOUGHT.value:
+                    parent['valueEstimate'] = max(parent.get('valueEstimate', 0.0), value)
+                # For action nodes, use average
+                else:
+                    parent_visits = parent.get('visits', 0)
+                    parent_value = parent.get('valueEstimate', 0.0)
+                    parent['valueEstimate'] = (parent_value * parent_visits + value) / (parent_visits + 1)
+                    parent['visits'] = parent_visits + 1
+                parent_id = parent.get('parentId')
+            else:
+                break
+
+        # Update node type
+        node['nodeType'] = NodeType.COMMAND.value
 
 def summarize_command_output(output_text, command, user_query, client):
     """
@@ -187,7 +361,7 @@ def generate_enhanced_prompt(user_query):
         "messages": [
             {"role": "user", "content": formatted_superprompt}
         ],
-        "max_tokens": 32000,
+        "max_completion_tokens": 32000,
         "temperature": 0.7
     }
     
@@ -201,7 +375,7 @@ def generate_enhanced_prompt(user_query):
     
     return enhanced_prompt
 
-def llm_for_actionable_commands(client, user_query, previous_attempts=None, enhanced_prompt=None):
+def llm_for_actionable_commands(client, user_query, previous_attempts=None, enhanced_prompt=None, mcts_state=None):
     """
     Generates commands using the LLM based on the user query and previous attempts.
     
@@ -210,12 +384,31 @@ def llm_for_actionable_commands(client, user_query, previous_attempts=None, enha
         user_query (str): The user's query
         previous_attempts (list, optional): List of previous attempts with their results
         enhanced_prompt (str, optional): Pre-generated enhanced prompt for the first attempt
+        mcts_state (dict, optional): Current MCTS state with history
     
     Returns:
         tuple: (LLM response, prompt used)
     """
-    if previous_attempts and len(previous_attempts) > 0:
-        # Create a detailed summary of previous attempts
+    if mcts_state and 'concatenated_context' in mcts_state:
+        # Use the rich history from MCTS state
+        prompt = f"""Previous attempts to answer this query have failed. 
+                    Here is the history of attempts and their results:
+
+                    {mcts_state['concatenated_context']}
+
+                    Please provide a new approach to answer the original query:
+                    {user_query}
+
+                    Remember to:
+                    1. Consider why the previous attempts failed
+                    2. Adjust the approach based on the error messages or results
+                    3. Try a different strategy if the previous ones weren't successful
+                    4. Include your reasoning in <think> tags and your final commands in <action> tags
+                    
+                    Specifically, analyze the errors from previous attempts and explain how your new approach addresses them.
+                """
+    elif previous_attempts and len(previous_attempts) > 0:
+        # Fallback to old format if no MCTS state
         previous_attempts_str = ""
         for i, attempt in enumerate(previous_attempts):
             previous_attempts_str += f"\nAttempt {i+1}:\n"
@@ -239,524 +432,21 @@ def llm_for_actionable_commands(client, user_query, previous_attempts=None, enha
                     3. Try a different strategy if the previous ones weren't successful
                     4. Include your reasoning in <think> tags and your final commands in <action> tags
                 """
-        
-        # For retries, we'll use R1 directly
-        # Create a specific config for this call
-        r1_config = {
-            "api_key": together_api_key,
-            "endpoint": "https://api.together.xyz/v1",
-            "model_id": "deepseek-ai/DeepSeek-R1",
-            "client": together_client,
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 32000,
-            "temperature": 0.7
-        }
-        response = query_llm(client, prompt, r1_config)
     else:
-        # For the initial attempt:
-        # Use the provided enhanced prompt if available, otherwise generate a new one
+        # First attempt: use the enhanced prompt
         if enhanced_prompt:
             prompt = enhanced_prompt
         else:
-            # Fallback to generating a new prompt if none was provided
-            prompt = generate_enhanced_prompt(user_query)
-        
-        # Create a specific config for this call
-        r1_config = {
-            "api_key": together_api_key,
-            "endpoint": "https://api.together.xyz/v1",
-            "model_id": "deepseek-ai/DeepSeek-R1",
-            "client": together_client,
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 32000,
-            "temperature": 0.7
-        }
-        
-        # Now use the enhanced prompt with R1 to generate commands
-        response = query_llm(client, prompt, r1_config)
-        
-    return response, prompt
-
-def execute_command(command, llm_response_file=None):
-    """
-    Executes a command and returns the output.
-
-    Args:
-        command (str): The command to execute.
-        llm_response_file (str, optional): Path to the LLM response file to append observations.
-
-    Returns:
-        dict: Dictionary containing execution results.
-    """
-    try:
-        print(f"Executing command: {command}")
-        
-        # Execute the command and redirect output to the temporary file
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        stdout, stderr = process.communicate()
-        
-        # If there's an error, include it in the output
-        error_message = None
-        if stderr:
-            error_message = f"Error executing command: {stderr}"
-        
-        # Append the observation to the LLM response file if provided
-        if llm_response_file:
-            with open(llm_response_file, 'a') as f:
-                f.write(f"\n\n<observation>\n{stdout}")
-                if stderr:
-                    f.write(f"\n\nErrors:\n{stderr}")
-                f.write("\n</observation>\n")
-        
-        # Return a dictionary with the structured results
-        return {
-            "observation": {
-                "stdout": stdout,
-                "stderr": stderr,
-                "return_code": process.returncode,
-                "output_files": []
-            },
-            "action_input": command
-        }
+            # Format the superprompt with the user query
+            formatted_superprompt = CoT_template.format(user_query=user_query)
+            prompt = formatted_superprompt
     
-    except Exception as e:
-        error_message = f"Error executing command: {str(e)}"
-        
-        # Append the error observation to the LLM response file if provided
-        if llm_response_file:
-            with open(llm_response_file, 'a') as f:
-                f.write(f"\n\n<observation>\n{error_message}\n</observation>\n")
-        
-        # Return a dictionary with the error information
-        return {
-            "observation": {
-                "stdout": "",
-                "stderr": error_message,
-                "return_code": 1,
-                "output_files": []
-            },
-            "action_input": command
-        }
-
-def is_valid_json(json_str):
-    """
-    Validates if the provided string is a valid JSON.
-
-    Args:
-        json_str (str): The JSON string to validate.
-
-    Returns:
-        bool: True if valid JSON, False otherwise.
-    """
-    try:
-        json.loads(json_str)
-        return True
-    except json.JSONDecodeError:
-        print(f"Invalid JSON: {json_str}")
-        exit()
-        return False
-
-#----------------------------------
-# Main Execution
-
-def main():
-    # Create the main query_results directory if it doesn't exist
-    main_results_dir = "query_results"
-    os.makedirs(main_results_dir, exist_ok=True)
-    print(f"Total queries to process: {len(queries)}")
-    for user_query in queries:
-        print(f"Processing: {user_query}")
-        
-        # Create a sanitized subfolder name based on the query
-        query_subfolder = sanitize_filename(user_query)
-        
-        # Create directory for this specific query's results
-        query_dir = os.path.join(main_results_dir, query_subfolder)
-        os.makedirs(query_dir, exist_ok=True)
-        
-        # Check if a training file already exists in this directory
-        training_files = [f for f in os.listdir(query_dir) if f.startswith("training_")]
-        if training_files:
-            print(f"Skipping query '{user_query}' - training file already exists")
-            continue
-        
-        # Create the trace file at the beginning
-        trace_file_path = os.path.join(query_dir, "complete_trace.txt")
-        
-        # Start writing to the trace file
-        with open(trace_file_path, "w", encoding="utf-8") as f:
-            # Write the user query
-            f.write(f"# User Query\n{user_query}\n\n")
-        
-        print(f"Processing query: {user_query}")
-        print(f"Saving results to: {trace_file_path}")
-        
-        # Initialize tracking for attempts
-        previous_attempts = []
-        max_attempts = 3
-        success = False
-        current_attempt = 1
-        
-        # Try multiple attempts if needed
-        for attempt_num in range(max_attempts):
-            print(f"Attempt {attempt_num + 1} for query: {user_query}")
-            
-            # Append the attempt header to the trace file
-            with open(trace_file_path, "a", encoding="utf-8") as f:
-                f.write(f"# Attempt {current_attempt}\n\n")
-            
-            # Format the superprompt with the user query and write it to trace file immediately
-            if current_attempt == 1:
-                formatted_superprompt = CoT_template.format(user_query=user_query)
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"## Original Superprompt (before enhancement)\n{formatted_superprompt}\n\n")
-                
-                # Generate an enhanced prompt using O1
-                enhanced_prompt = generate_enhanced_prompt(user_query)
-                
-                # Write enhanced prompt to trace file
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"## Enhanced Prompt from o1-preview\n{enhanced_prompt}\n\n")
-                
-                # Use the enhanced prompt with R1 to generate commands
-                response, prompt = llm_for_actionable_commands(together_client, user_query, previous_attempts, enhanced_prompt)
-            else:
-                # Generate commands using LLM with knowledge of previous attempts
-                response, prompt = llm_for_actionable_commands(together_client, user_query, previous_attempts)
-            
-            # Check if response has action tags, if not retry same call up to 3 times
-            retry_count = 0
-            max_retries = 3
-            while ("<action>" not in response or "</action>" not in response) and retry_count < max_retries:
-                # Write to trace file about retrying due to missing action tags
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"## Retry for missing action tags (attempt {retry_count + 1})\n")
-                    f.write("Response missing required <action> and </action> tags. Retrying same call.\n\n")
-                    # Write the raw response that's missing tags
-                    f.write(f"## Raw LLM Response with missing tags:\n```\n{response}\n```\n\n")
-                
-                # LLM extraction before retry
-                extracted_commands = extract_commands_with_llm(response, together_client)
-                if extracted_commands:
-                    # Use actual commands directly without JSON formatting
-                    formatted_commands = ""
-                    for cmd in extracted_commands:
-                        formatted_commands += f'{{"action": "{cmd["action"]}", "action_input": "{cmd["action_input"]}"}}\n'
-                    
-                    # Replace the original response with properly formatted commands
-                    response = f"<action>\n{formatted_commands}\n</action>"
-                    break
-                
-                # Retry the same call
-                response, prompt = llm_for_actionable_commands(together_client, user_query, previous_attempts, enhanced_prompt)
-                retry_count += 1
-            
-            # If we still don't have action tags after retries, write the final response
-            if "<action>" not in response or "</action>" not in response:
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write("## Final attempt still missing action tags\n")
-                    f.write(f"## Raw LLM Response with missing tags:\n```\n{response}\n```\n\n")
-            
-            # Write the prompt and response to the trace file
-            with open(trace_file_path, "a", encoding="utf-8") as f:
-                if current_attempt == 1:  # First attempt - prompts already written in generate_enhanced_prompt
-                    pass
-                else:
-                    f.write(f"## Initial Prompt\n{prompt}\n\n")
-                f.write(f"## LLM Response\n{response}\n\n")
-            
-            # Parse commands from LLM response
-            commands = parse_commands(response, together_client)
-            if not commands:
-                print("No valid commands generated")
-                
-                # Get detailed parsing error information
-                parsing_error = "Command parsing failed"
-                if "<action>" not in response:
-                    parsing_error += ": No <action> tags found in the response"
-                elif "</action>" not in response:
-                    parsing_error += ": Missing closing </action> tag in response"
-                elif "action" not in response and "action_input" not in response:
-                    parsing_error += ": Response has <action> tags but missing 'action' and 'action_input' fields"
-                elif response.count("{") == 0 or response.count("}") == 0:
-                    parsing_error += ": No JSON object found in <action> tags"
-                else:
-                    parsing_error += ": Invalid JSON format or structure in <action> tags"
-                
-                # Create a failed attempt record so we can try again
-                attempt = {
-                    "command": "No valid command generated",
-                    "result": parsing_error,
-                    "classification": "FAILURE: No valid command could be parsed",
-                    #"justification": "",  # Keeping the key but not using it
-                    "solution": "",
-                    "status": "failure"
-                }
-                previous_attempts.append(attempt)
-                
-                # Write the failure to the trace file
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write("## Command Execution 1\n\n")
-                    f.write("<action>\nNo valid command generated\n</action>\n\n")
-                    f.write(f"<observation>\n{parsing_error}\n</observation>\n\n")
-                    f.write("<classification>\nFAILURE: No valid command could be parsed\n</classification>\n\n")
-                    f.write("---\n\n")
-                
-                current_attempt += 1
-                continue
-            
-            # Process commands
-            attempt_had_success = False
-            solution = ""
-            all_observations = []
-            successful_commands = []  # Track successful commands specifically
-            
-            # Execute commands one by one, allowing for updates after each execution
-            command_index = 0
-            while command_index < len(commands):
-                # Get the current command
-                cmd = commands[command_index]
-                
-                print(f"Executing command {command_index + 1}/{len(commands)}: {cmd['action_input']}")
-                
-                # Write the command to the trace file
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"## Command Execution {command_index + 1}\n\n")
-                    f.write(f"<action>\n{cmd['action_input']}\n</action>\n\n")
-                
-                # Execute the command
-                execution_result = execute_command(cmd['action_input'])
-                has_error = execution_result["observation"]["stderr"].strip() != ""
-                
-                # Collect the observation
-                observation_text = execution_result["observation"]["stdout"].strip()
-                if has_error:
-                    observation_text += f"\n{execution_result['observation']['stderr'].strip()}"
-                all_observations.append(observation_text)
-                
-                # Write the observation to the trace file
-                with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"<observation>\n{observation_text}\n</observation>\n\n")
-                
-                # Only proceed with classification if execution produced output
-                if observation_text:
-                    classification = classify_last_command_output_with_llm(user_query, cmd['action_input'], observation_text, together_client)
-                    # Remove the thinking process from classification
-                    classification = remove_think_tags(classification)
-                    
-                    # Write classification to trace file
-                    with open(trace_file_path, "a", encoding="utf-8") as f:
-                        f.write(f"<classification>\n{classification}\n</classification>\n\n")
-
-                    # Check if command was technically successful
-                    # Parse the classification text into a structured object
-                    classification_obj = parse_classification_text(classification)
-                    cmd_success = classification_obj.is_successful()
-                    
-                    # Record this attempt details
-                    command_result = {
-                        "cmd": cmd['action_input'],
-                        "observation_text": observation_text,
-                        "classification": classification,
-                        "success": cmd_success
-                    }
-                    
-                    if cmd_success:
-                        # Store successful command for training output
-                        successful_commands.append({
-                            "action": commands[command_index]["action"],
-                            "action_input": commands[command_index]["action_input"],
-                            "action_output": observation_text
-                        })
-                        
-                        # For successful commands, derive a solution
-                        solution_raw = derive_solution_with_llm(classification, together_client)
-                        solution = remove_think_tags(solution_raw)
-                        
-                        # Write solution to trace file
-                        with open(trace_file_path, "a", encoding="utf-8") as f:
-                            f.write(f"<intermediate_solution>\n{solution}\n</intermediate_solution>\n\n")
-                        
-                        # Mark that we found a technically successful command
-                        command_result["solution"] = solution
-                        
-                        # Ask if we should update remaining commands based on this output
-                        if command_index < len(commands) - 1:
-                            # Use helper function to determine if commands should be updated
-                            should_update, updated_commands, update_response = update_commands_with_llm(
-                                user_query, commands, command_index, cmd['action_input'], 
-                                observation_text, classification, together_client
-                            )
-                            
-                            if should_update:
-                                commands = updated_commands
-                                
-                                # Write the updated commands to the trace file
-                                with open(trace_file_path, "a", encoding="utf-8") as f:
-                                    f.write(f"<commands_updated>\nRemaining commands updated based on execution result.\n")
-                                    f.write(f"New command list: {json.dumps(commands)}\n</commands_updated>\n\n")
-                            else:
-                                with open(trace_file_path, "a", encoding="utf-8") as f:
-                                    f.write("<commands_updated>No updates needed.</commands_updated>\n\n")
-                        
-                        # Add separator in trace file
-                        with open(trace_file_path, "a", encoding="utf-8") as f:
-                            f.write("---\n\n")
-                        
-                        # Move to the next command
-                        command_index += 1
-                    else:
-                        # For failed commands, try to fix the command
-                        # Write failure to trace file
-                        with open(trace_file_path, "a", encoding="utf-8") as f:
-                            f.write("<command_failed>Command classified as technical failure. Attempting to fix.</command_failed>\n\n")
-                        
-                        # Use helper function to fix the failed command
-                        fixed_cmd, fix_response = fix_failed_command_with_llm(
-                            user_query, cmd, observation_text, classification, together_client
-                        )
-                        
-                        # Write the fix attempt to the trace file
-                        with open(trace_file_path, "a", encoding="utf-8") as f:
-                            f.write(f"<fix_attempt>\n{fix_response}\n</fix_attempt>\n\n")
-                            f.write(f"<fixed_command>\n{fixed_cmd['action_input']}\n</fixed_command>\n\n")
-                        
-                        # Update the command in the list and retry it
-                        commands[command_index] = fixed_cmd
-                        
-                        # Add separator in trace file
-                        with open(trace_file_path, "a", encoding="utf-8") as f:
-                            f.write("---\n\n")
-                        
-                        # Do not increment command_index - we'll retry this command
-                        continue
-                else: #no observation text - go here (not sure this is needed)
-                    # Write failure to trace file
-                    with open(trace_file_path, "a", encoding="utf-8") as f:
-                        f.write("<no_output>Command execution failed or produced no output.</no_output>\n\n")
-                        f.write("<command_failed>Command produced no output. Attempting to fix.</command_failed>\n\n")
-                        
-                    # Try to fix the command that produced no output
-                    fixed_cmd, fix_response = fix_failed_command_with_llm(
-                        user_query, cmd, "Command produced no output", "FAILURE", together_client
-                    )
-                    
-                    # Write the fix attempt to the trace file
-                    with open(trace_file_path, "a", encoding="utf-8") as f:
-                        f.write(f"<fix_attempt>\n{fix_response}\n</fix_attempt>\n\n")
-                        f.write(f"<fixed_command>\n{fixed_cmd['action_input']}\n</fixed_command>\n\n")
-                        f.write("---\n\n")
-                    
-                    # Update the command in the list and retry it
-                    commands[command_index] = fixed_cmd
-                    
-                    
-                    # Do not increment command_index - we'll retry this command
-                    continue
-            
-            # After all commands are executed, evaluate the attempt as a whole
-           
-            # Drop into interactive Python session
-            #import pdb; pdb.set_trace()
-
-            # Derive a comprehensive solution from successful command outputs only
-            print("Deriving final solution from successful command outputs...")
-            final_solution = generate_final_solution_with_llm(user_query, successful_commands, openai_client)
-            
-            # Write the final solution to the trace file
-            with open(trace_file_path, "a", encoding="utf-8") as f:
-                f.write(f"<answer>\n{final_solution}\n</answer>\n\n")
-            
-            # Evaluate if the solution answers the user query
-            print("Evaluating if solution answers user query...")
-            attempt_had_success, solution_evaluation = evaluate_solution_with_llm(user_query, final_solution, together_client)
-            success = attempt_had_success
-            
-            print(f"Solution answers user query: {attempt_had_success}")
-            
-            # Write evaluation to trace file
-            with open(trace_file_path, "a", encoding="utf-8") as f:
-                f.write(f"Solution Evaluation:\n{solution_evaluation}\n\n")
-            
-            # Generate training output if the attempt was successful
-            if attempt_had_success:
-                # Extract think content from the response
-                think_match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
-                think_content = think_match.group(1).strip() if think_match else "No reasoning process provided"
-                
-                # Format action content with ONLY successful commands that led to the solution
-                action_content = json.dumps(successful_commands, indent=2)
-                
-                # Generate training output in the query's directory
-                training_file = generate_training_output(
-                    user_query=user_query,
-                    think_content=think_content,
-                    action_content=action_content,
-                    answer_content=final_solution,
-                    output_dir=query_dir
-                )
-                print(f"Generated training output: {training_file}")
-
-            # Break if successful
-            if attempt_had_success:
-                print(f"Query succeeded on attempt {attempt_num + 1}")
-                break
-            elif attempt_num < max_attempts - 1:
-                print(f"Attempt {attempt_num + 1} failed. Trying another attempt with adjusted approach.")
-                current_attempt += 1
-            else:
-                print(f"All {max_attempts} attempts failed for query: {user_query}")
-        
-        print(f"Complete trace saved to {trace_file_path}")
-        print(f"Finished processing query: {user_query}")
-    
-
-#----------------------------------
-# Entry Point
-
-if __name__ == "__main__":
-    #test_parse_commands()
-    main()
-
-def summarize_observations(observations, client):
-    """
-    Uses the LLM to summarize a list of observations.
-    
-    Args:
-        observations (list): List of observation strings
-        client: The LLM client to use
-    
-    Returns:
-        str: A summary of the observations
-    """
-    # Combine all observations
-    combined_observations = "\n\n".join(observations)
-    
-    # Create a prompt for summarization
-    prompt = f"""
-    Please summarize the following observations from command executions:
-    
-    {combined_observations}
-    
-    Focus on the key findings and any patterns or trends.
-    """
-    
-    # Create a proper model config
-    model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
+    # Create a specific config for this call
+    r1_config = {
+        "api_key": together_api_key,
+        "endpoint": "https://api.together.xyz/v1",
+        "model_id": "deepseek-ai/DeepSeek-R1",
+        "client": together_client,
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
@@ -765,8 +455,163 @@ def summarize_observations(observations, client):
         "temperature": 0.7
     }
     
-    # Get the summary from the LLM
-    summary = query_llm(client, prompt, model_config)
+    # Get response from R1
+    response = query_llm(client, prompt, r1_config)
+    return response, prompt
+
+def execute_command(command):
+    """
+    Execute a command and return its output.
     
-    return summary
+    Args:
+        command (str): The command to execute
+        
+    Returns:
+        str: The command output
+    """
+    try:
+        # Execute the command
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        
+        # Return the output
+        if result.returncode == 0:
+            return result.stdout
+        else:
+            return f"Error: {result.stderr}\nExit code: {result.returncode}"
+    except Exception as e:
+        return f"Exception: {str(e)}"
+
+def extract_think_content(response):
+    """
+    Extract the content within <think> tags from a response.
+    
+    Args:
+        response (str): The response containing <think> tags
+        
+    Returns:
+        str: The content within <think> tags
+    """
+    think_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+    think_matches = think_pattern.findall(response)
+    
+    if think_matches:
+        return "\n\n".join(think_matches)
+    else:
+        return ""
+
+def format_action_content(command_attempts):
+    """
+    Format the command attempts into a string for training data.
+    
+    Args:
+        command_attempts (list): List of command attempts
+        
+    Returns:
+        str: Formatted action content
+    """
+    action_content = ""
+    
+    for attempt in command_attempts:
+        action_content += f"Command: {attempt['command']}\n"
+        action_content += f"Output: {attempt['result']}\n"
+        action_content += f"Status: {attempt['status']}\n"
+        action_content += "-" * 50 + "\n"
+    
+    return action_content
+
+def main():
+    # Process each query
+    for user_query in queries:
+        print(f"\n=== Processing Query: {user_query} ===")
+        
+        # Initialize MCTS
+        initial_state = initialize_mcts_state(user_query)
+        current_state = initial_state
+        
+        # Track command attempts
+        command_attempts = []
+        
+        # Main loop
+        max_iterations = 10
+        for iteration in range(max_iterations):
+            print(f"\n=== Iteration {iteration+1}/{max_iterations} ===")
+            
+            # Generate possible actions
+            if iteration == 0:
+                # First iteration: use enhanced prompt
+                enhanced_prompt = generate_enhanced_prompt(user_query)
+                llm_response, _ = llm_for_actionable_commands(together_client, user_query, enhanced_prompt=enhanced_prompt)
+            else:
+                # Subsequent iterations: use MCTS state history
+                llm_response, _ = llm_for_actionable_commands(together_client, user_query, mcts_state=current_state)
+            
+            # Extract commands
+            commands = parse_commands(llm_response, together_client)
+            
+            if not commands:
+                print("No valid commands found. Trying again...")
+                continue
+            
+            # Convert commands to action format
+            possible_actions = []
+            for cmd in commands:
+                if isinstance(cmd, dict) and 'action_input' in cmd:
+                    possible_actions.append(cmd['action_input'])
+                elif isinstance(cmd, str):
+                    possible_actions.append(cmd)
+            
+            # Get next action from MCTS
+            next_action, action_node = get_next_action_from_mcts(current_state, possible_actions)
+            
+            if not next_action:
+                print("MCTS could not select a next action. Trying again...")
+                continue
+            
+            # Execute command
+            print(f"Executing command: {next_action}")
+            result = execute_command(next_action)
+            
+            # Get command classification from LLM
+            classification_text = classify_last_command_output_with_llm(user_query, next_action, result, together_client)
+            classification = parse_classification_text(classification_text)
+            
+            # Calculate node and chain values
+            node_value = calculate_node_value(action_node)
+            chain_value = calculate_chain_value(action_node['nodeId'], mcts_manager)
+            
+            # Update MCTS with result
+            update_mcts_with_command_result(mcts_manager, next_action, result, classification)
+            
+            # Store classification in the node
+            action_node['classification'] = classification
+            
+            # Record attempt
+            command_attempts.append({
+                'command': next_action,
+                'result': result,
+                'classification': classification,
+                'status': classification.status.value
+            })
+            
+            # Evaluate if we've reached a solution
+            solution_classification = evaluate_attempt_with_llm(user_query, command_attempts, together_client)
+            
+            # Check if we found a complete solution
+            if solution_classification.status == SolutionStatus.COMPLETE:
+                print("\nFound complete solution!")
+                print(f"\nSolution: {generate_final_solution_with_llm(user_query, command_attempts, together_client)}")
+                print(f"\nReason: {solution_classification.reason}")
+                break
+   
+        print("\n=== Final Results ===")
+        print(f"Query: {user_query}")
+        print(f"Total attempts: {len(command_attempts)}")
+        print("\nCommand history:")
+        print(format_action_content(command_attempts))
+        
+        # Exit after first query
+        break
+
+if __name__ == "__main__":
+    main()
 
