@@ -614,6 +614,52 @@ class MCTSThinkingManager:
         self.node_map[new_node['id']] = new_node
         return new_node['id']
 
+    def split_thoughts_from_text(self, think_text: str) -> List[str]:
+        """
+        Split a string of concatenated thoughts (from <think> tags) into a list of individual thoughts.
+        Splits on double newlines.
+        Args:
+            think_text (str): The text containing all thoughts
+        Returns:
+            List[str]: List of individual thought strings
+        """
+        if not think_text.strip():
+            return []
+        # Split on two or more newlines
+        thoughts = [t.strip() for t in re.split(r'\n\s*\n', think_text) if t.strip()]
+        return thoughts
+
+    def organize_thoughts_into_chain(self, thoughts: List[str], total_thoughts: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Organize a list of thought strings into a chain of thought nodes.
+        Each node is created using process_thought, and linked as the child of the previous node.
+        Args:
+            thoughts (List[str]): List of thought strings
+            total_thoughts (Optional[int]): Total number of thoughts (for node metadata)
+        Returns:
+            List[Dict[str, Any]]: List of node dicts in chain order
+        """
+        if not thoughts:
+            return []
+        if total_thoughts is None:
+            total_thoughts = len(thoughts)
+        nodes = []
+        parent_id = None
+        for idx, thought in enumerate(thoughts):
+            node_data = {
+                'thought': thought,
+                'thoughtNumber': idx + 1,
+                'totalThoughts': total_thoughts,
+                'nextThoughtNeeded': (idx < len(thoughts) - 1),
+                'nodeType': NodeType.THOUGHT.value,
+                'parentId': parent_id
+            }
+            node_result = self.process_thought(node_data)
+            node_id = node_result.get('currentNodeId')
+            parent_id = node_id
+            nodes.append(self.node_map[node_id])
+        return nodes
+
 # Create an MCP server instance
 mcp = FastMCP("MCTS Thinking")
 

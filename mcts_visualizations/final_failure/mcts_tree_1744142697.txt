@@ -1,0 +1,8 @@
+MCTS Tree Visualization
+=====================
+
+[THOUGHT] 1 | Value: 0.17 | Visits: 3
+    └── [ACTION] 2 | Value: 0.17 | Visits: 3 | Action: curl -s "https://www.bv-brc.org/api/genome_feature/?and(eq(genus,Salmonella),eq(species,enterica))&select(feature_id,product,annotation)&limit(1)"
+        └── [ACTION] 3 | Value: 0.25 | Visits: 2 | Action: curl -s "https://www.bv-brc.org/api/genome_feature/?and(eq(genus,Salmonella),eq(species,enterica))&select(feature_id,product,annotation)&limit(1)"
+            └── [ACTION] 4 | Value: 0.50 | Visits: 1 | Action: curl -s "https://www.bv-brc.org/api/genome_feature/?and(eq(genus,Salmonella),eq(species,enterica))&select(feature_id,product,annotation)&limit(1)"
+[THOUGHT] 1 | Value: 0.50 | Visits: 1
