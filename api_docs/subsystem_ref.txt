@@ -1,20 +1,23 @@
- Subsystem Ref Data
-Data Type: subsystem_ref
-Primary Key: id
-Attributes
+Subsystem reference record: Represents a subsystem reference and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    class ( string)
-    date_inserted ( date)
-    date_modified ( date)
-    description ( string)
-    id * ( string)
-    notes ( array of strings)
-    pmid ( array of strings)
-    role_id ( array of strings)
-    role_name ( array of strings)
-    subclass ( string)
-    subsystem_id ( string)
-    subsystem_name ( string)
-    superclass ( string)
+A subsystem reference record describes a reference for a biological subsystem, including identifiers, roles, class, and metadata. Subsystem references are used for annotation and comparative genomics.
 
+Fields:
+- id: Unique identifier for the subsystem reference. Example: SUBREF_00001
+- subsystem_id: Subsystem identifier. Example: "SS_00001"
+- subsystem_name: Name of the subsystem. Example: "Glycolysis"
+- class: Class of the subsystem. Example: "Metabolism"
+- subclass: Subclass of the subsystem. Example: "Carbohydrate metabolism"
+- superclass: Superclass of the subsystem. Example: "Biological process"
+- role_id: List of role identifiers. Example: ["ROLE_00001"]
+- role_name: List of role names. Example: ["Hexokinase"]
+- description: Description of the subsystem. Example: "Carbohydrate metabolism pathway."
+- notes: List of notes. Example: ["important for energy production"]
+- pmid: List of PubMed IDs. Example: ["12345678"]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Subsystem references are used for annotation and comparative genomics.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

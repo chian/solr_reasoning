@@ -1,19 +1,22 @@
- Spike Variant Data
-Data Type: spike_variant
-Primary Key: id
-Attributes
+Spike variant record: Represents a spike protein variant and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    aa_variant ( string)
-    country ( case insensitive string)
-    date_inserted ( date)
-    date_modified ( date)
-    growth_rate ( number)
-    id * ( string)
-    lineage_count ( integer)
-    month ( string)
-    prevalence ( number)
-    region ( case insensitive string)
-    sequence_features ( array of strings)
-    total_isolates ( integer)
+A spike variant record describes a variant of the spike protein, including identifiers, prevalence, region, and metadata. Spike variants are used for tracking viral evolution and epidemiology.
 
+Fields:
+- id: Unique identifier for the spike variant. Example: SV_00001
+- aa_variant: Amino acid variant. Example: "D614G"
+- lineage_count: Number of isolates in the lineage. Example: 100
+- country: Country of detection. Example: "USA"
+- region: Region of detection. Example: "North America"
+- month: Month of detection. Example: "2021-01"
+- prevalence: Prevalence of the variant. Example: 0.15
+- growth_rate: Growth rate of the variant. Example: 1.2
+- total_isolates: Total number of isolates. Example: 500
+- sequence_features: List of sequence features. Example: ["D614G", "N501Y"]
+- date_inserted: Date the record was inserted. Example: 2021-01-01
+- date_modified: Date the record was last modified. Example: 2021-02-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Spike variants are used for tracking viral evolution and epidemiology.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

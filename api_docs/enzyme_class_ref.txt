@@ -1,12 +1,15 @@
- Enzyme Class Ref Data
-Data Type: enzyme_class_ref
-Primary Key: ec_number
-Attributes
+Enzyme class reference record: Represents an enzyme class definition and metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    ec_description ( string)
-    ec_number * ( string)
-    go ( array of case insensitive strings)
+An enzyme class reference record describes an enzyme class, including its EC number, description, and related Gene Ontology (GO) terms. Enzyme classes are used for functional annotation and pathway analysis.
 
+Fields:
+- ec_number: Enzyme Commission (EC) number. Example: 2.7.1.1
+- ec_description: Description of the enzyme class. Example: "Hexokinase"
+- go: List of associated Gene Ontology terms. Example: ["GO:0005524"]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Enzyme classes are used for annotation and pathway mapping.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

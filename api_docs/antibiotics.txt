@@ -1,0 +1,28 @@
+Antibiotics record: Represents an antibiotic and associated metadata in BV-BRC.
+
+An antibiotics record describes an antibiotic, including chemical and physical properties, pharmacology, mechanism of action, and identifiers. Antibiotics data are used for AMR research, pharmacology, and annotation.
+
+Fields:
+- pubchem_cid: PubChem Compound ID. Example: 12345
+- antibiotic_name: Name of the antibiotic. Example: "Ampicillin"
+- synonyms: List of synonyms for the antibiotic. Example: ["Penbritin", "Polycillin"]
+- cas_id: CAS registry number. Example: "69-53-4"
+- atc_classification: List of ATC classification codes. Example: ["J01CA01"]
+- canonical_smiles: Canonical SMILES string. Example: "CC(=O)OC1=CC=CC=C1C(=O)O"
+- isomeric_smiles: Isomeric SMILES string. Example: "CC(=O)OC1=CC=CC=C1C(=O)O"
+- inchi_key: InChIKey identifier. Example: "BSYNRYMUTXBXSQ-UHFFFAOYSA-N"
+- molecular_formula: Molecular formula. Example: "C16H19N3O4S"
+- molecular_weight: Molecular weight. Example: "349.4"
+- pharmacological_classes: List of pharmacological classes. Example: ["beta-lactam antibiotic"]
+- pharmacology: List of pharmacological properties. Example: ["inhibits cell wall synthesis"]
+- mechanism_of_action: List of mechanisms of action. Example: ["inhibits transpeptidase"]
+- description: List of descriptions. Example: ["Broad-spectrum penicillin antibiotic"]
+- drugbank_interactions: List of DrugBank interaction IDs. Example: ["DB01060"]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- pubchem_cid_i: Integer PubChem Compound ID. Example: 12345
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Antibiotics records are used for AMR research, pharmacology, and annotation.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

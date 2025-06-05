@@ -1,112 +1,114 @@
- Surveillance Data
-Data Type: surveillance
-Primary Key: id
-Attributes
+Surveillance record: Represents a surveillance case or sample and associated metadata in BV-BRC.
 
-    additional_metadata ( array of case insensitive strings)
-    alcohol_or_other_drug_dependence ( case insensitive string)
-    breastfeeding ( case insensitive string)
-    chest_imaging_interpretation ( case insensitive string)
-    chronic_conditions ( array of case insensitive strings)
-    collection_city ( case insensitive string)
-    collection_country ( case insensitive string)
-    collection_date ( date)
-    collection_latitude ( number)
-    collection_longitude ( number)
-    collection_poi ( case insensitive string)
-    collection_season ( case insensitive string)
-    collection_state_province ( case insensitive string)
-    collection_year ( case insensitive string)
-    collector_institution ( case insensitive string)
-    collector_name ( array of case insensitive strings)
-    comments ( array of case insensitive strings)
-    contact_email_address ( case insensitive string)
-    contributing_institution ( case insensitive string)
-    date_inserted ( date)
-    date_modified ( date)
-    daycare_attendance ( case insensitive string)
-    days_elapsed_to_disease_status ( case insensitive string)
-    days_elapsed_to_sample_collection ( case insensitive string)
-    days_elapsed_to_vaccination ( array of case insensitive strings)
-    diagnosis ( array of case insensitive strings)
-    dialysis ( case insensitive string)
-    disease_severity ( case insensitive string)
-    disease_status ( case insensitive string)
-    duration_of_exposure ( array of case insensitive strings)
-    duration_of_treatment ( array of case insensitive strings)
-    ecmo ( case insensitive string)
-    education ( case insensitive string)
-    embargo_end_date ( date)
-    exposure ( array of case insensitive strings)
-    exposure_type ( array of case insensitive strings)
-    genome_id ( array of strings)
-    geographic_group ( case insensitive string)
-    hospitalization_duration ( case insensitive string)
-    hospitalized ( case insensitive string)
-    host_age ( case insensitive string)
-    host_capture_status ( case insensitive string)
-    host_common_name ( case insensitive string)
-    host_ethnicity ( array of case insensitive strings)
-    host_group ( case insensitive string)
-    host_habitat ( case insensitive string)
-    host_health ( case insensitive string)
-    host_height ( case insensitive string)
-    host_id_type ( case insensitive string)
-    host_identifier ( string)
-    host_natural_state ( case insensitive string)
-    host_race ( array of case insensitive strings)
-    host_sex ( case insensitive string)
-    host_species ( case insensitive string)
-    host_weight ( case insensitive string)
-    human_leukocyte_antigens ( case insensitive string)
-    id * ( string)
-    infections_within_five_years ( array of case insensitive strings)
-    influenza_like_illness_over_the_past_year ( case insensitive string)
-    initiation_of_treatment ( array of case insensitive strings)
-    intensive_care_unit ( case insensitive string)
-    last_update_date ( date)
-    longitudinal_study ( case insensitive string)
-    maintenance_medication ( array of case insensitive strings)
-    nursing_home_residence ( case insensitive string)
-    onset_hours ( case insensitive string)
-    other_vaccinations ( case insensitive string)
-    oxygen_saturation ( case insensitive string)
-    packs_per_day_for_how_many_years ( case insensitive string)
-    pathogen_test_interpretation ( array of case insensitive strings)
-    pathogen_test_result ( array of case insensitive strings)
-    pathogen_test_type ( array of case insensitive strings)
-    pathogen_type ( case insensitive string)
-    post_visit_medications ( array of case insensitive strings)
-    pre_visit_medications ( array of case insensitive strings)
-    pregnancy ( case insensitive string)
-    primary_living_situation ( case insensitive string)
-    profession ( case insensitive string)
-    project_identifier ( string)
-    sample_accession ( string)
-    sample_identifier ( string)
-    sample_material ( case insensitive string)
-    sample_receipt_date ( case insensitive string)
-    sample_transport_medium ( case insensitive string)
-    sequence_accession ( array of strings)
-    source_of_vaccine_information ( array of case insensitive strings)
-    species ( case insensitive string)
-    strain ( case insensitive string)
-    submission_date ( date)
-    subtype ( case insensitive string)
-    sudden_onset ( case insensitive string)
-    symptoms ( array of case insensitive strings)
-    taxon_lineage_ids ( array of strings)
-    tobacco_use ( case insensitive string)
-    travel_history ( array of case insensitive strings)
-    treatment ( array of case insensitive strings)
-    treatment_dosage ( array of case insensitive strings)
-    treatment_type ( array of case insensitive strings)
-    trimester_of_pregnancy ( case insensitive string)
-    types_of_allergies ( array of case insensitive strings)
-    use_of_personal_protective_equipment ( array of case insensitive strings)
-    vaccination_type ( case insensitive string)
-    vaccine_dosage ( array of case insensitive strings)
-    vaccine_lot_number ( array of case insensitive strings)
-    vaccine_manufacturer ( array of case insensitive strings)
-    ventilation ( case insensitive string)
+A surveillance record describes a case or sample collected for surveillance purposes, including host, collection, clinical, and epidemiological data. Surveillance data are used for public health, epidemiology, and research.
 
+Fields:
+- id: Unique identifier for the surveillance record. Example: SURV_00001
+- collection_city: City where the sample was collected. Example: "Chicago"
+- collection_country: Country where the sample was collected. Example: "USA"
+- collection_date: Date of sample collection. Example: 2020-05-01
+- collection_latitude: Latitude of collection site. Example: 41.8781
+- collection_longitude: Longitude of collection site. Example: -87.6298
+- collection_poi: Point of interest for collection. Example: "hospital"
+- collection_season: Season of collection. Example: "spring"
+- collection_state_province: State or province of collection. Example: "Illinois"
+- collection_year: Year of collection. Example: "2020"
+- collector_institution: Institution collecting the sample. Example: "CDC"
+- collector_name: List of collector names. Example: ["Dr. Smith"]
+- contributing_institution: Institution contributing the data. Example: "CDC"
+- host_age: Age of the host. Example: "35"
+- host_common_name: Common name of the host. Example: "human"
+- host_group: Host group. Example: "mammal"
+- host_health: Health status of the host. Example: "healthy"
+- host_identifier: Identifier for the host. Example: "H12345"
+- host_sex: Sex of the host. Example: "female"
+- host_species: Species of the host. Example: "Homo sapiens"
+- project_identifier: Project identifier. Example: "PRJNA12345"
+- sample_accession: Sample accession. Example: "SAMN00123456"
+- sample_identifier: Sample identifier. Example: "S12345"
+- sample_material: Material of the sample. Example: "nasal swab"
+- sample_receipt_date: Date the sample was received. Example: "2020-05-02"
+- sample_transport_medium: Transport medium for the sample. Example: "VTM"
+- species: Species of the sample. Example: "Homo sapiens"
+- strain: Strain designation. Example: "K12"
+- subtype: Subtype designation. Example: "H7"
+- symptoms: List of symptoms. Example: ["fever", "cough"]
+- taxon_lineage_ids: Taxonomic lineage IDs. Example: [83332, 562]
+- treatment: List of treatments. Example: ["antibiotics"]
+- treatment_dosage: List of treatment dosages. Example: ["500mg"]
+- treatment_type: List of treatment types. Example: ["oral"]
+- vaccination_type: Type of vaccination. Example: "mRNA"
+- vaccine_dosage: List of vaccine dosages. Example: ["30ug"]
+- vaccine_lot_number: List of vaccine lot numbers. Example: ["LOT123"]
+- vaccine_manufacturer: List of vaccine manufacturers. Example: ["Pfizer"]
+- date_inserted: Date the record was inserted. Example: 2020-06-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+- additional_metadata: Additional metadata. Example: ["metadata1", "metadata2"]
+- alcohol_or_other_drug_dependence: Alcohol or other drug dependence status. Example: "none"
+- breastfeeding: Breastfeeding status. Example: "yes"
+- chest_imaging_interpretation: Chest imaging interpretation. Example: "normal"
+- chronic_conditions: Chronic conditions. Example: ["diabetes"]
+- contact_email_address: Contact email address. Example: "user@example.com"
+- daycare_attendance: Daycare attendance status. Example: "no"
+- days_elapsed_to_disease_status: Days elapsed to disease status. Example: "5"
+- days_elapsed_to_sample_collection: Days elapsed to sample collection. Example: "2"
+- days_elapsed_to_vaccination: Days elapsed to vaccination. Example: ["10"]
+- diagnosis: Diagnosis information. Example: ["influenza"]
+- dialysis: Dialysis status. Example: "no"
+- disease_severity: Disease severity. Example: "mild"
+- disease_status: Disease status. Example: "recovered"
+- duration_of_exposure: Duration of exposure. Example: ["2 hours"]
+- duration_of_treatment: Duration of treatment. Example: ["5 days"]
+- ecmo: ECMO status. Example: "no"
+- education: Education level. Example: "college"
+- embargo_end_date: Embargo end date. Example: "2021-12-31"
+- exposure: Exposure information. Example: ["contact"]
+- exposure_type: Exposure type. Example: ["household"]
+- genome_id: Genome IDs. Example: ["83332.12"]
+- geographic_group: Geographic group. Example: "North America"
+- hospitalization_duration: Hospitalization duration. Example: "3 days"
+- hospitalized: Hospitalized status. Example: "yes"
+- host_capture_status: Host capture status. Example: "wild"
+- host_ethnicity: Host ethnicity. Example: ["Hispanic"]
+- host_habitat: Host habitat. Example: "urban"
+- host_height: Host height. Example: "170 cm"
+- host_id_type: Host ID type. Example: "passport"
+- host_natural_state: Host natural state. Example: "healthy"
+- host_race: Host race. Example: ["White"]
+- human_leukocyte_antigens: Human leukocyte antigens. Example: "A*01:01"
+- infections_within_five_years: Infections within five years. Example: ["influenza"]
+- influenza_like_illness_over_the_past_year: Influenza-like illness over the past year. Example: "no"
+- initiation_of_treatment: Initiation of treatment. Example: ["antivirals"]
+- intensive_care_unit: Intensive care unit status. Example: "no"
+- last_update_date: Last update date. Example: "2021-06-01"
+- longitudinal_study: Longitudinal study status. Example: "yes"
+- maintenance_medication: Maintenance medication. Example: ["insulin"]
+- nursing_home_residence: Nursing home residence status. Example: "no"
+- onset_hours: Onset hours. Example: "24"
+- other_vaccinations: Other vaccinations. Example: "MMR"
+- oxygen_saturation: Oxygen saturation. Example: "98%"
+- packs_per_day_for_how_many_years: Packs per day for how many years. Example: "0"
+- pathogen_test_interpretation: Pathogen test interpretation. Example: ["positive"]
+- pathogen_test_result: Pathogen test result. Example: ["negative"]
+- pathogen_test_type: Pathogen test type. Example: ["PCR"]
+- pathogen_type: Pathogen type. Example: "virus"
+- post_visit_medications: Post-visit medications. Example: ["acetaminophen"]
+- pre_visit_medications: Pre-visit medications. Example: ["ibuprofen"]
+- pregnancy: Pregnancy status. Example: "no"
+- primary_living_situation: Primary living situation. Example: "home"
+- profession: Profession. Example: "teacher"
+- sequence_accession: Sequence accession. Example: ["ABC123"]
+- source_of_vaccine_information: Source of vaccine information. Example: ["medical record"]
+- submission_date: Submission date. Example: "2020-06-02"
+- sudden_onset: Sudden onset status. Example: "yes"
+- tobacco_use: Tobacco use. Example: "no"
+- travel_history: Travel history. Example: ["Italy"]
+- trimester_of_pregnancy: Trimester of pregnancy. Example: "first"
+- types_of_allergies: Types of allergies. Example: ["penicillin"]
+- use_of_personal_protective_equipment: Use of personal protective equipment. Example: ["mask"]
+- ventilation: Ventilation status. Example: "no"
+
+Notes:
+- Surveillance records are used for public health, epidemiology, and research.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

@@ -1,36 +1,39 @@
- Epitope Assay Data
-Data Type: epitope_assay
-Primary Key: assay_id
-Attributes
+Epitope assay record: Represents an immunological assay performed on an epitope in BV-BRC.
 
-    _version_ ( number)
-    assay_group ( string)
-    assay_id * ( string)
-    assay_measurement ( string)
-    assay_measurement_unit ( string)
-    assay_method ( string)
-    assay_result ( string)
-    assay_type ( string)
-    authors ( string)
-    date_inserted ( date)
-    date_modified ( date)
-    end ( integer)
-    epitope_id ( string)
-    epitope_sequence ( string)
-    epitope_type ( string)
-    host_name ( case insensitive string)
-    host_taxon_id ( string)
-    mhc_allele ( string)
-    mhc_allele_class ( string)
-    organism ( case insensitive string)
-    pdb_id ( string)
-    pmid ( string)
-    protein_accession ( string)
-    protein_id ( string)
-    protein_name ( case insensitive string)
-    start ( integer)
-    taxon_id ( integer)
-    taxon_lineage_ids ( array of strings)
-    taxon_lineage_names ( array of strings)
-    title ( case insensitive string)
+An epitope assay record describes an experiment or test measuring immune response to an epitope, including assay type, result, method, host, and related metadata. Assays are linked to epitopes, proteins, and organisms.
 
+Fields:
+- assay_id: Unique identifier for the assay. Example: ASSAY_00001
+- assay_group: Group or category of the assay. Example: "B-cell"
+- assay_type: Type of assay (e.g., B-cell, T-cell, MHC). Example: "B-cell"
+- assay_method: Method used for the assay. Example: "ELISA"
+- assay_measurement: Measurement value. Example: "1.2"
+- assay_measurement_unit: Unit of measurement. Example: "OD"
+- assay_result: Result of the assay. Example: "positive"
+- authors: Authors of the assay publication. Example: "Smith et al."
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- end: End coordinate of the epitope. Example: 18
+- epitope_id: Identifier of the associated epitope. Example: EPI_00001
+- epitope_sequence: Amino acid sequence of the epitope. Example: "SYFPEITHI"
+- epitope_type: Type of epitope. Example: "linear"
+- host_name: Name of the host organism. Example: "human"
+- host_taxon_id: NCBI Taxonomy ID of the host. Example: 9606
+- mhc_allele: MHC allele involved. Example: "HLA-A*02:01"
+- mhc_allele_class: MHC allele class. Example: "I"
+- organism: Name of the organism. Example: "Escherichia coli"
+- pdb_id: PDB ID of the structure. Example: "1A2B"
+- pmid: PubMed ID for supporting publication. Example: "12345678"
+- protein_accession: Protein accession. Example: "P0A8V2"
+- protein_id: Identifier of the associated protein. Example: "NP_414543.1"
+- protein_name: Name of the protein. Example: "DNA polymerase III subunit beta"
+- start: Start coordinate of the epitope. Example: 10
+- taxon_id: NCBI Taxonomy ID. Example: 83332
+- taxon_lineage_ids: Taxonomic lineage IDs. Example: [83332, 562]
+- taxon_lineage_names: Taxonomic lineage names. Example: ["Bacteria", "Proteobacteria"]
+- title: Title of the assay or publication. Example: "Epitope mapping of DNA polymerase III"
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Epitope assays measure immune response to specific epitopes.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

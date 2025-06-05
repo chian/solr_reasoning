@@ -1,30 +1,33 @@
- Protein Structure Data
-Data Type: protein_structure
-Primary Key: pdb_id
-Attributes
+Protein structure record: Represents a protein 3D structure and associated metadata in BV-BRC.
 
-    alignments ( array of strings)
-    authors ( array of strings)
-    date_inserted ( date)
-    date_modified ( date)
-    feature_id ( string)
-    file_path ( string)
-    gene ( array of strings)
-    genome_id ( string)
-    institution ( string)
-    method ( array of strings)
-    organism_name ( array of case insensitive strings)
-    patric_id ( string)
-    pdb_id * ( string)
-    pmid ( array of strings)
-    product ( array of strings)
-    release_date ( date)
-    resolution ( string)
-    sequence ( array of strings)
-    sequence_md5 ( array of strings)
-    taxon_id ( array of integers)
-    taxon_lineage_ids ( array of strings)
-    taxon_lineage_names ( array of strings)
-    title ( case insensitive string)
-    uniprotkb_accession ( array of strings)
+A protein structure record describes a resolved or predicted 3D structure of a protein, including identifiers, sequence, method, resolution, and related metadata. Structures are linked to protein features and genomes.
 
+Fields:
+- pdb_id: Unique identifier for the protein structure (PDB ID). Example: 1A2B
+- feature_id: Identifier of the associated protein feature. Example: fig|83332.12.peg.1
+- patric_id: PATRIC-specific feature ID. Example: fig|83332.12.peg.1
+- genome_id: Identifier of the parent genome. Example: 83332.12
+- organism_name: Name of the organism. Example: Escherichia coli
+- gene: Gene symbol(s) associated with the structure. Example: dnaN
+- product: Product(s) described by the structure. Example: DNA polymerase III subunit beta
+- sequence: Amino acid sequence(s) of the protein. Example: "MSTNPKPQR..."
+- sequence_md5: MD5 checksum(s) of the sequence. Example: 1bc29b36f623ba82aaf6724fd3b16718
+- alignments: List of alignment identifiers. Example: ["align1", "align2"]
+- authors: Authors of the structure publication. Example: ["Smith et al."]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- file_path: Path to the structure file. Example: "/structures/1A2B.pdb"
+- institution: Institution responsible for the structure. Example: "Broad Institute"
+- method: Experimental or computational method(s) used. Example: ["X-ray crystallography"]
+- pmid: PubMed IDs for supporting publications. Example: ["12345678"]
+- release_date: Date the structure was released. Example: 2005-06-01
+- resolution: Resolution of the structure. Example: "2.0 Å"
+- taxon_id: NCBI Taxonomy ID(s). Example: [83332]
+- taxon_lineage_ids: Taxonomic lineage IDs. Example: [83332, 562]
+- taxon_lineage_names: Taxonomic lineage names. Example: ["Bacteria", "Proteobacteria"]
+- title: Title of the structure. Example: "Structure of DNA polymerase III"
+- uniprotkb_accession: UniProtKB accession(s). Example: ["P0A8V2"]
+
+Notes:
+- Protein structures may be experimental or computational models.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

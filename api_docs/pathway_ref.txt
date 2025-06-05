@@ -1,19 +1,22 @@
- Pathway Ref Data
-Data Type: pathway_ref
-Primary Key: id
-Attributes
+Pathway reference record: Represents a pathway reference and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    ec_description ( string)
-    ec_number ( string)
-    id * ( string)
-    map_location ( array of strings)
-    map_name ( string)
-    map_type ( string)
-    occurrence ( integer)
-    pathway_class ( string)
-    pathway_id ( string)
-    pathway_name ( string)
+A pathway reference record describes a reference pathway, including identifiers, EC numbers, class, and mapping information. Pathway references are used for annotation and comparative pathway analysis.
 
+Fields:
+- id: Unique identifier for the pathway reference. Example: PATHREF_00001
+- pathway_id: Pathway identifier. Example: ko00010
+- pathway_name: Name of the pathway. Example: "Glycolysis / Gluconeogenesis"
+- pathway_class: Class of the pathway. Example: "Metabolism"
+- ec_number: Enzyme Commission number. Example: 2.7.1.1
+- ec_description: Description of the EC number. Example: "Hexokinase"
+- map_location: List of map locations. Example: ["map1", "map2"]
+- map_name: Name of the map. Example: "KEGG map00010"
+- map_type: Type of map. Example: "KEGG"
+- occurrence: Occurrence count. Example: 5
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Pathway references are used for annotation and pathway mapping.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

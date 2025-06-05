@@ -1,13 +1,16 @@
- Gene Ontology Ref Data
-Data Type: gene_ontology_ref
-Primary Key: go_id
-Attributes
+Gene ontology reference record: Represents a Gene Ontology (GO) term and metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    definition ( string)
-    go_id * ( string)
-    go_name ( string)
-    ontology ( string)
+A gene ontology reference record describes a GO term, including its identifier, name, definition, and ontology type. GO terms are used for functional annotation of genes and proteins.
 
+Fields:
+- go_id: Gene Ontology identifier. Example: GO:0005524
+- go_name: Name of the GO term. Example: "ATP binding"
+- definition: Definition of the GO term. Example: "Interacting selectively and non-covalently with ATP."
+- ontology: Ontology type (e.g., biological_process, molecular_function, cellular_component). Example: "molecular_function"
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- GO terms are used for annotation of genes and proteins.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

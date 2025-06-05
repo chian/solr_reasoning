@@ -1,12 +1,15 @@
- Feature Sequence Data
-Data Type: feature_sequence
-Primary Key: md5
-Attributes
+Feature sequence record: Represents a biological sequence and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    md5 * ( string)
-    sequence ( )
-    sequence_type ( string)
+A feature sequence record describes a nucleotide or protein sequence, including its MD5 checksum, type, and metadata. Sequences are linked to features and genomes.
 
+Fields:
+- md5: MD5 checksum of the sequence. Example: 1bc29b36f623ba82aaf6724fd3b16718
+- sequence: The nucleotide or protein sequence. Example: "ATGCGT..."
+- sequence_type: Type of sequence (e.g., DNA, RNA, protein). Example: "protein"
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Feature sequences are used for annotation and comparative genomics.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

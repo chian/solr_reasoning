@@ -1,34 +1,37 @@
- Genome Sequence Data
-Data Type: genome_sequence
-Primary Key: sequence_id
-Attributes
+Genome sequence record: Represents a genome sequence and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    accession ( string)
-    chromosome ( case insensitive string)
-    date_inserted ( date)
-    date_modified ( date)
-    description ( case insensitive string)
-    gc_content ( number)
-    genome_id ( string)
-    genome_name ( case insensitive string)
-    gi ( integer)
-    length ( integer)
-    mol_type ( case insensitive string)
-    owner ( string)
-    p2_sequence_id ( integer)
-    plasmid ( case insensitive string)
-    public ( boolean)
-    release_date ( date)
-    segment ( case insensitive string)
-    sequence ( )
-    sequence_id * ( string)
-    sequence_md5 ( string)
-    sequence_status ( string)
-    sequence_type ( case insensitive string)
-    taxon_id ( integer)
-    topology ( case insensitive string)
-    user_read ( array of strings)
-    user_write ( array of strings)
-    version ( integer)
+A genome sequence record describes a nucleotide sequence from a genome, including identifiers, sequence, type, and metadata. Sequences are linked to genomes and features.
 
+Fields:
+- sequence_id: Unique identifier for the sequence. Example: SEQ_00001
+- genome_id: Identifier of the parent genome. Example: 83332.12
+- genome_name: Name of the parent genome. Example: "Escherichia coli K12"
+- accession: Accession number for the sequence. Example: "U00096.3"
+- chromosome: Chromosome designation. Example: "Chromosome 1"
+- plasmid: Plasmid designation. Example: "pK12"
+- segment: Segment designation. Example: "Segment 1"
+- description: Description of the sequence. Example: "Complete genome sequence."
+- sequence: The nucleotide sequence. Example: "ATGCGT..."
+- sequence_md5: MD5 checksum of the sequence. Example: 1bc29b36f623ba82aaf6724fd3b16718
+- sequence_type: Type of sequence (e.g., DNA, RNA). Example: "DNA"
+- sequence_status: Status of the sequence. Example: "complete"
+- length: Length of the sequence in base pairs. Example: 4641652
+- gc_content: GC content percentage. Example: 50.8
+- mol_type: Molecule type. Example: "genomic DNA"
+- gi: GenInfo Identifier. Example: 123456
+- p2_sequence_id: Secondary sequence ID. Example: 2
+- release_date: Date the sequence was released. Example: 2001-05-12
+- public: Whether the sequence is public. Example: true
+- owner: Owner of the sequence record. Example: "user@bv-brc.org"
+- user_read: Users with read access. Example: ["user1", "user2"]
+- user_write: Users with write access. Example: ["user1"]
+- taxon_id: NCBI Taxonomy ID. Example: 83332
+- topology: Topology of the sequence (e.g., circular, linear). Example: "circular"
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- version: Version number of the sequence. Example: 1
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Genome sequences are linked to genomes and features.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

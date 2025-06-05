@@ -1,0 +1,13 @@
+ ID Ref Data
+Data Type: id_ref
+Primary Key: id
+Attributes
+
+    _version_ ( number)
+    date_inserted ( date)
+    date_modified ( date)
+    id * ( string)
+    id_type ( string)
+    id_value ( string)
+    uniprotkb_accession ( string)
+

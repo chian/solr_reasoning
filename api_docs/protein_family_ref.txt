@@ -1,12 +1,15 @@
- Protein Family Ref Data
-Data Type: protein_family_ref
-Primary Key: family_id
-Attributes
+Protein family reference record: Represents a protein family definition and metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    family_id * ( string)
-    family_product ( string)
-    family_type ( string)
+A protein family reference record describes a protein family, including its unique identifier, product name, type, and metadata. Protein families are used to group related proteins across genomes for comparative analysis.
 
+Fields:
+- family_id: Unique identifier for the protein family. Example: PLF_000001
+- family_product: Name or description of the protein family. Example: DNA polymerase III family
+- family_type: Type of protein family (e.g., PLfam, PGfam, FIGfam). Example: PLfam
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Protein families are used for functional annotation and comparative genomics.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

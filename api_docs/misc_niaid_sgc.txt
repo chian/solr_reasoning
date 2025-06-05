@@ -1,18 +1,21 @@
- Misc NIAID SGC Data
-Data Type: misc_niaid_sgc
-Primary Key: target_id
-Attributes
+Miscellaneous NIAID SGC record: Represents a NIAID SGC target and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    date_inserted ( date)
-    date_modified ( date)
-    gene_symbol_collection ( array of strings)
-    genus ( string)
-    has_clones ( string)
-    has_proteins ( string)
-    selection_criteria ( string)
-    species ( string)
-    strain ( string)
-    target_id * ( string)
-    target_status ( string)
+A miscellaneous NIAID SGC record describes a target from the NIAID Structural Genomics Centers, including gene symbols, taxonomic information, and status. These records are used for tracking targets in structural genomics projects.
 
+Fields:
+- target_id: Unique identifier for the target. Example: TGT_00001
+- gene_symbol_collection: List of gene symbols. Example: ["dnaN", "recA"]
+- genus: Genus of the organism. Example: "Escherichia"
+- species: Species of the organism. Example: "coli"
+- strain: Strain designation. Example: "K12"
+- has_clones: Whether clones are available. Example: "yes"
+- has_proteins: Whether proteins are available. Example: "yes"
+- selection_criteria: Criteria for target selection. Example: "high priority"
+- target_status: Status of the target. Example: "in progress"
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- NIAID SGC records track targets for structural genomics.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

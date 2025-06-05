@@ -1,0 +1,35 @@
+ Genome AMR Data
+Data Type: genome_amr
+Primary Key: id
+Attributes
+
+    _version_ ( number)
+    antibiotic ( string)
+    computational_method ( case insensitive string)
+    computational_method_performance ( string)
+    computational_method_version ( string)
+    date_inserted ( date)
+    date_modified ( date)
+    evidence ( case insensitive string)
+    genome_id ( string)
+    genome_name ( case insensitive string)
+    id * ( string)
+    laboratory_typing_method ( case insensitive string)
+    laboratory_typing_method_version ( string)
+    laboratory_typing_platform ( case insensitive string)
+    measurement ( string)
+    measurement_sign ( string)
+    measurement_unit ( string)
+    measurement_value ( string)
+    owner ( string)
+    pmid ( array of integers)
+    public ( boolean)
+    resistant_phenotype ( string)
+    source ( case insensitive string)
+    taxon_id ( integer)
+    testing_standard ( case insensitive string)
+    testing_standard_year ( integer)
+    user_read ( array of strings)
+    user_write ( array of strings)
+    vendor ( case insensitive string)
+

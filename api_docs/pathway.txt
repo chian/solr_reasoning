@@ -1,33 +1,40 @@
- Pathway Data
-Data Type: pathway
-Primary Key: id
-Attributes
+Pathway record: Represents a biological pathway annotated in a genome, typically using KEGG or similar standards.
 
-    _version_ ( number)
-    accession ( case insensitive string)
-    alt_locus_tag ( string)
-    annotation ( case insensitive string)
-    date_inserted ( date)
-    date_modified ( date)
-    ec_description ( case insensitive string)
-    ec_number ( string)
-    feature_id ( string)
-    gene ( case insensitive string)
-    genome_ec ( string)
-    genome_id ( string)
-    genome_name ( case insensitive string)
-    id * ( string)
-    owner ( string)
-    pathway_class ( case insensitive string)
-    pathway_ec ( string)
-    pathway_id ( string)
-    pathway_name ( case insensitive string)
-    patric_id ( string)
-    product ( case insensitive string)
-    public ( boolean)
-    refseq_locus_tag ( string)
-    sequence_id ( string)
-    taxon_id ( integer)
-    user_read ( array of strings)
-    user_write ( array of strings)
+A pathway record describes a metabolic or regulatory pathway present in a genome, including its identifiers, name, associated EC numbers, and links to genes and proteins involved in the pathway. Pathways are projected onto genomes as part of the annotation process.
 
+Fields:
+- id: Unique identifier for the pathway record. Example: PATH_00001
+- pathway_id: Unique identifier for the pathway. Example: ko00010
+- pathway_name: Name or description of the pathway. Example: Glycolysis / Gluconeogenesis
+- ec_number: Enzyme Commission number associated with the pathway. Example: 2.7.1.1
+- ec_numbers: List of Enzyme Commission numbers associated with the pathway. Example: 2.7.1.1, 1.2.1.12
+- genome_id: Identifier of the genome where the pathway is annotated. Example: 83332.12
+- genome_name: Name of the genome. Example: Escherichia coli K12
+- gene_ids: List of gene or feature IDs involved in the pathway. Example: fig|83332.12.peg.1, fig|83332.12.peg.2
+- accession: Accession number for the pathway. Example: "P00001"
+- alt_locus_tag: Alternative locus tag. Example: "b0001"
+- annotation: Source of the annotation. Example: "KEGG"
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- ec_description: Description of the EC number. Example: "Hexokinase"
+- feature_id: Feature ID associated with the pathway. Example: fig|83332.12.peg.1
+- gene: Gene symbol or name. Example: "dnaN"
+- genome_ec: Genome EC number. Example: "2.7.1.1"
+- owner: Owner of the record. Example: user@bv-brc.org
+- pathway_class: Class of the pathway. Example: "Metabolism"
+- pathway_ec: Pathway EC number. Example: "2.7.1.1"
+- patric_id: PATRIC-specific ID. Example: fig|83332.12.peg.1
+- product: Product of the pathway. Example: "Glucose-6-phosphate"
+- public: Whether the record is public. Example: true
+- refseq_locus_tag: RefSeq locus tag. Example: "b0001"
+- sequence_id: Sequence identifier. Example: "NC_000913.3"
+- source: Source of the pathway annotation (e.g., KEGG, BV-BRC). Example: KEGG
+- taxon_id: NCBI Taxonomy ID. Example: 83332
+- user_read: Users with read access. Example: ["user1", "user2"]
+- user_write: Users with write access. Example: ["user1"]
+- description: Additional description or notes about the pathway.
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Pathways are typically based on KEGG maps and EC numbers.
+- Not all fields are present for every pathway; see BV-BRC documentation for more details. 

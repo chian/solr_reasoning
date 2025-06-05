@@ -175,3 +175,6 @@ query_results/
 
 # Exclude all directories starting with query_
 query_*/
+
+# Ignore all .zip files
+*.zip

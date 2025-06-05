@@ -1,38 +1,41 @@
- PPI Data
-Data Type: ppi
-Primary Key: id
-Attributes
+Protein-protein interaction (PPI) record: Represents a protein-protein interaction and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    category ( string)
-    date_inserted ( date)
-    date_modified ( date)
-    detection_method ( array of case insensitive strings)
-    domain_a ( string)
-    domain_b ( string)
-    evidence ( array of strings)
-    feature_id_a ( string)
-    feature_id_b ( string)
-    gene_a ( string)
-    gene_b ( string)
-    genome_id_a ( string)
-    genome_id_b ( string)
-    genome_name_a ( case insensitive string)
-    genome_name_b ( case insensitive string)
-    id * ( string)
-    interaction_type ( array of case insensitive strings)
-    interactor_a ( string)
-    interactor_b ( string)
-    interactor_desc_a ( case insensitive string)
-    interactor_desc_b ( case insensitive string)
-    interactor_type_a ( string)
-    interactor_type_b ( string)
-    pmid ( array of strings)
-    refseq_locus_tag_a ( string)
-    refseq_locus_tag_b ( string)
-    score ( array of strings)
-    source_db ( array of strings)
-    source_id ( array of strings)
-    taxon_id_a ( integer)
-    taxon_id_b ( integer)
+A PPI record describes an interaction between two proteins, including identifiers, detection methods, evidence, and metadata. PPIs are used for studying molecular networks and functional associations.
 
+Fields:
+- id: Unique identifier for the PPI. Example: PPI_00001
+- feature_id_a: Feature ID of protein A. Example: fig|83332.12.peg.1
+- feature_id_b: Feature ID of protein B. Example: fig|83332.12.peg.2
+- gene_a: Gene symbol for protein A. Example: dnaN
+- gene_b: Gene symbol for protein B. Example: recA
+- genome_id_a: Genome ID for protein A. Example: 83332.12
+- genome_id_b: Genome ID for protein B. Example: 83332.12
+- genome_name_a: Genome name for protein A. Example: "Escherichia coli K12"
+- genome_name_b: Genome name for protein B. Example: "Escherichia coli K12"
+- interactor_a: Interactor identifier for protein A. Example: "P0A8V2"
+- interactor_b: Interactor identifier for protein B. Example: "P0A7V8"
+- interactor_desc_a: Description of interactor A. Example: "DNA polymerase III subunit beta"
+- interactor_desc_b: Description of interactor B. Example: "RecA protein"
+- interactor_type_a: Type of interactor A. Example: "protein"
+- interactor_type_b: Type of interactor B. Example: "protein"
+- detection_method: List of detection methods. Example: ["yeast two-hybrid"]
+- interaction_type: List of interaction types. Example: ["physical association"]
+- evidence: List of evidence identifiers. Example: ["ECO:0000353"]
+- pmid: List of PubMed IDs for supporting publications. Example: ["12345678"]
+- refseq_locus_tag_a: RefSeq locus tag for protein A. Example: "b0001"
+- refseq_locus_tag_b: RefSeq locus tag for protein B. Example: "b0002"
+- domain_a: Domain of protein A. Example: "DNA_pol3_beta"
+- domain_b: Domain of protein B. Example: "RecA"
+- score: List of scores. Example: ["0.95"]
+- source_db: List of source databases. Example: ["IntAct"]
+- source_id: List of source IDs. Example: ["EBI-12345"]
+- category: Category of the interaction. Example: "experimentally validated"
+- taxon_id_a: NCBI Taxonomy ID for protein A. Example: 83332
+- taxon_id_b: NCBI Taxonomy ID for protein B. Example: 83332
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- PPIs are used for studying molecular networks and functional associations.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

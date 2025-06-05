@@ -1,0 +1,18 @@
+ Misc NIAID SGC Data
+Data Type: misc_niaid_sgc
+Primary Key: target_id
+Attributes
+
+    _version_ ( number)
+    date_inserted ( date)
+    date_modified ( date)
+    gene_symbol_collection ( array of strings)
+    genus ( string)
+    has_clones ( string)
+    has_proteins ( string)
+    selection_criteria ( string)
+    species ( string)
+    strain ( string)
+    target_id * ( string)
+    target_status ( string)
+

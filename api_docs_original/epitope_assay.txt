@@ -1,0 +1,36 @@
+ Epitope Assay Data
+Data Type: epitope_assay
+Primary Key: assay_id
+Attributes
+
+    _version_ ( number)
+    assay_group ( string)
+    assay_id * ( string)
+    assay_measurement ( string)
+    assay_measurement_unit ( string)
+    assay_method ( string)
+    assay_result ( string)
+    assay_type ( string)
+    authors ( string)
+    date_inserted ( date)
+    date_modified ( date)
+    end ( integer)
+    epitope_id ( string)
+    epitope_sequence ( string)
+    epitope_type ( string)
+    host_name ( case insensitive string)
+    host_taxon_id ( string)
+    mhc_allele ( string)
+    mhc_allele_class ( string)
+    organism ( case insensitive string)
+    pdb_id ( string)
+    pmid ( string)
+    protein_accession ( string)
+    protein_id ( string)
+    protein_name ( case insensitive string)
+    start ( integer)
+    taxon_id ( integer)
+    taxon_lineage_ids ( array of strings)
+    taxon_lineage_names ( array of strings)
+    title ( case insensitive string)
+

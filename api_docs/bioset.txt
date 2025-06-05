@@ -1,42 +1,45 @@
- bioset Data
-Data Type: bioset
-Primary Key: bioset_id
-Attributes
+Bioset record: Represents a biological experiment set and associated metadata in BV-BRC.
 
-    _version_ ( number)
-    additional_data ( array of strings)
-    additional_metadata ( array of case insensitive strings)
-    analysis_group_1 ( case insensitive string)
-    analysis_group_2 ( case insensitive string)
-    analysis_method ( case insensitive string)
-    bioset_criteria ( case insensitive string)
-    bioset_description ( case insensitive string)
-    bioset_id * ( string)
-    bioset_name ( case insensitive string)
-    bioset_result ( array of strings)
-    bioset_type ( case insensitive string)
-    date_inserted ( date)
-    date_modified ( date)
-    entity_count ( case insensitive string)
-    entity_type ( case insensitive string)
-    exp_id ( string)
-    exp_name ( case insensitive string)
-    exp_title ( case insensitive string)
-    exp_type ( case insensitive string)
-    genome_id ( array of strings)
-    organism ( case insensitive string)
-    protocol ( array of strings)
-    result_type ( case insensitive string)
-    strain ( case insensitive string)
-    study_description ( case insensitive string)
-    study_institution ( case insensitive string)
-    study_name ( case insensitive string)
-    study_pi ( case insensitive string)
-    study_title ( case insensitive string)
-    taxon_id ( integer)
-    taxon_lineage_ids ( array of strings)
-    treatment_amount ( case insensitive string)
-    treatment_duration ( case insensitive string)
-    treatment_name ( case insensitive string)
-    treatment_type ( case insensitive string)
+A bioset record describes a set of biological samples or experiments, including identifiers, experiment details, analysis methods, and metadata. Biosets are used for comparative analysis and study grouping.
 
+Fields:
+- bioset_id: Unique identifier for the bioset. Example: BIOSET_00001
+- bioset_name: Name of the bioset. Example: "E. coli stress response"
+- bioset_description: Description of the bioset. Example: "Samples exposed to oxidative stress."
+- bioset_type: Type of bioset. Example: "RNA-Seq"
+- bioset_criteria: Criteria for inclusion in the bioset. Example: "log2FC > 2"
+- bioset_result: List of result identifiers. Example: ["RESULT_0001"]
+- analysis_group_1: First analysis group. Example: "treated"
+- analysis_group_2: Second analysis group. Example: "control"
+- analysis_method: Method used for analysis. Example: "DESeq2"
+- additional_data: Additional data fields. Example: ["extra1", "extra2"]
+- additional_metadata: Additional metadata fields. Example: ["meta1", "meta2"]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+- entity_count: Number of entities in the bioset. Example: "100"
+- entity_type: Type of entity. Example: "gene"
+- exp_id: Experiment identifier. Example: "EXP_0001"
+- exp_name: Name of the experiment. Example: "E. coli RNA-Seq"
+- exp_title: Title of the experiment. Example: "Transcriptome analysis of E. coli"
+- exp_type: Type of experiment. Example: "RNA-Seq"
+- genome_id: List of genome IDs. Example: ["83332.12"]
+- organism: Name of the organism. Example: "Escherichia coli"
+- protocol: List of protocols used. Example: ["standard RNA extraction"]
+- result_type: Type of result. Example: "differential expression"
+- strain: Strain designation. Example: "K12"
+- study_description: Description of the study. Example: "Study of stress response."
+- study_institution: Institution conducting the study. Example: "Broad Institute"
+- study_name: Name of the study. Example: "E. coli stress study"
+- study_pi: Principal investigator. Example: "Dr. Smith"
+- study_title: Title of the study. Example: "Oxidative stress in E. coli"
+- taxon_id: NCBI Taxonomy ID. Example: 83332
+- taxon_lineage_ids: Taxonomic lineage IDs. Example: [83332, 562]
+- treatment_amount: Amount of treatment. Example: "10 mM"
+- treatment_duration: Duration of treatment. Example: "1 hour"
+- treatment_name: Name of the treatment. Example: "H2O2"
+- treatment_type: Type of treatment. Example: "oxidative"
+- _version_: Version number of the record. Example: 1
+
+Notes:
+- Biosets group samples or experiments for comparative analysis.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 

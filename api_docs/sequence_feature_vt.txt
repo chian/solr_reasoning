@@ -1,22 +1,25 @@
- sequence_feature_vt Data
-Data Type: sequence_feature_vt
-Primary Key: id
-Attributes
+Sequence feature VT record: Represents a sequence feature variant type and associated metadata in BV-BRC.
 
-    additional_metadata ( array of case insensitive strings)
-    comments ( array of case insensitive strings)
-    date_inserted ( date)
-    date_modified ( date)
-    id * ( string)
-    sf_category ( string)
-    sf_id ( string)
-    sf_name ( case insensitive string)
-    sf_sequence ( string)
-    sf_sequence_md5 ( string)
-    sfvt_genome_count ( string)
-    sfvt_genome_ids ( array of strings)
-    sfvt_id ( string)
-    sfvt_sequence ( string)
-    sfvt_sequence_md5 ( string)
-    sfvt_variations ( string)
+A sequence feature VT record describes a variant type for a sequence feature, including identifiers, sequence, and metadata. These records are used for variant analysis and annotation.
 
+Fields:
+- id: Unique identifier for the sequence feature VT. Example: SFVT_00001
+- sf_category: Sequence feature category. Example: "variant"
+- sf_id: Sequence feature ID. Example: "SF_00001"
+- sf_name: Name of the sequence feature. Example: "DNA polymerase III variant"
+- sf_sequence: Sequence of the feature. Example: "ATGCGT..."
+- sf_sequence_md5: MD5 checksum of the feature sequence. Example: 1bc29b36f623ba82aaf6724fd3b16718
+- sfvt_genome_count: Number of genomes with this variant. Example: "5"
+- sfvt_genome_ids: List of genome IDs with this variant. Example: ["83332.12"]
+- sfvt_id: Sequence feature VT identifier. Example: "SFVT_00001"
+- sfvt_sequence: Sequence of the variant. Example: "ATGCGT..."
+- sfvt_sequence_md5: MD5 checksum of the variant sequence. Example: 1bc29b36f623ba82aaf6724fd3b16718
+- sfvt_variations: Description of the variations. Example: "A23T, G45C"
+- additional_metadata: Additional metadata fields. Example: ["meta1", "meta2"]
+- comments: Additional comments. Example: ["predicted variant"]
+- date_inserted: Date the record was inserted. Example: 2020-01-01
+- date_modified: Date the record was last modified. Example: 2021-01-01
+
+Notes:
+- Sequence feature VT records are used for variant analysis and annotation.
+- Not all fields are present for every record; see BV-BRC documentation for more details. 
