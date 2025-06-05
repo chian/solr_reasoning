@@ -171,3 +171,7 @@ cython_debug/
 .pypirc
 
 query_results/
+.aider*
+
+# Exclude all directories starting with query_
+query_*/
