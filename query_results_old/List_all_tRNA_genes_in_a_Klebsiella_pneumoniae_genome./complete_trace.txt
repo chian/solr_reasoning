@@ -1,5 +1,0 @@
-# User Query
-List all tRNA genes in a Klebsiella pneumoniae genome.
-
-# Attempt 1
-

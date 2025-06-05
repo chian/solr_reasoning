@@ -1,5 +1,0 @@
-# User Query
-Get all coding sequences (CDS) for a Pseudomonas aeruginosa genome.
-
-# Attempt 1
-

@@ -1,5 +1,0 @@
-# User Query
-Find all phage-associated genes in a Listeria monocytogenes genome.
-
-# Attempt 1
-

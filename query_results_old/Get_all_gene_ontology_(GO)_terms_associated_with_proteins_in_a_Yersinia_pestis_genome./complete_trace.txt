@@ -1,5 +1,0 @@
-# User Query
-Get all gene ontology (GO) terms associated with proteins in a Yersinia pestis genome.
-
-# Attempt 1
-
