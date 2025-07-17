@@ -455,148 +455,21 @@ def fix_failed_command_with_llm(user_query, cmd, observation_text, classificatio
         tuple: (fixed_command, llm_response)
     """
     import re
-    import os
-    
     # Limit the observation to a reasonable size
     observation_lines = observation_text.splitlines()[:100]
     observation_text = "\n".join(observation_lines)
-    
-    # Get relevant API documentation based on the command and error
-    api_context, doc_filename = get_relevant_api_docs(cmd['action_input'], observation_text)
-    
-    # Create the prompt for fixing the failed command
-    fix_prompt = f"""
-    User Query: {user_query}
-    
-    The following command failed:
-    ```
-    {cmd['action_input']}
-    ```
-    
-    Output:
-    {observation_text}
-    
-    Classification:
-    {classification}
-    
-    {api_context}
-    
-    IMPORTANT: ONLY fix this specific command syntax. DO NOT:
-    - Suggest multiple commands or a completely different approach
-    - Recommend tools or utilities not mentioned in the original command
-    - Propose alternative APIs or endpoints
-    - Change the fundamental approach
-    - DO NOT TRY TO USE ALTERNATIVES TO THE CORRECT BV-BRC SOLR CALL
-    - USE BV-BRC ONLY - USE BV-BRC ONLY - USE BV-BRC ONLY
-        --This means the "action" should be "bash" since that's how you make a SOLR query
-        --This also means the "action_input" should start with "curl" since that's how you make a SOLR query
-    - Consider if you should think about using a different endpoint.
-        --For example: consider genome to find genome ids before using genome_features
-    
-    Simply correct the syntax/parameters of THIS EXACT command to make it work.
-    Focus on addressing the specific issue that caused this command to fail.
-    
-    Your response should be in this format:
-    <fixed_command>
-    [the corrected command]
-    </fixed_command>
-    <explanation>
-    [brief explanation of what was fixed]
-    </explanation>
-    """
-    
-    # Create a proper model config
-    model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": fix_prompt}
-        ],
-        "max_tokens": 32000,
-        "temperature": 0.7
-    }
-    
-    # Ask the LLM to fix the command
-    fix_response = query_llm(client, fix_prompt, model_config)
-    
-    # Extract the fixed command from the LLM response
-    fixed_match = re.search(r'<fixed_command>(.*?)</fixed_command>', fix_response, re.DOTALL)
-    
+    # Remove API docs context logic
+    # Just prompt the LLM to fix the command based on the error
+    fix_prompt = f"The following command failed:\n{cmd}\n\nError:\n{observation_text}\n\nPlease suggest a corrected command."
+    fix_response = query_llm(client, fix_prompt, {"model": "deepseek-ai/DeepSeek-R1", "messages": [{"role": "user", "content": fix_prompt}], "max_tokens": 32000, "temperature": 0.7})
+    fixed_match = re.search(r'"action_input"\s*:\s*"([^"]+)"', fix_response)
     if fixed_match:
-        # Create a new command dictionary with the fixed command
         fixed_cmd = {
             "action": cmd["action"],
             "action_input": fixed_match.group(1).strip()
         }
     else:
-        # If no fixed command found, return the original command
         fixed_cmd = cmd
-    
-    # Add documentation filename to response if it was accessed
-    if doc_filename:
-        fix_response = fix_response + f"\n<accessed_documentation>{doc_filename}</accessed_documentation>"
-    
-    # Return the updated cmd dictionary
     return fixed_cmd, fix_response
-
-def get_relevant_api_docs(cmd, error_text, api_docs_dir="api_docs"):
-    """
-    Extracts relevant API documentation based on the command and error message.
-    
-    Args:
-        cmd (str): The command that failed
-        error_text (str): The error output
-        api_docs_dir (str): Directory containing API documentation files
-    
-    Returns:
-        tuple: (api_context, doc_filename or None)
-    """
-    # Default empty context
-    api_context = "RELEVANT API INFORMATION:\nNo specific API documentation could be found for this error."
-    doc_filename = None
-    
-    # Check for common API errors
-    field_error_match = re.search(r"undefined field (\w+)", error_text)
-    endpoint_match = re.search(r"https?://[^/]+/api/(\w+)/", cmd)
-    
-    if field_error_match and endpoint_match:
-        # Get problematic field and endpoint
-        problem_field = field_error_match.group(1)
-        endpoint = endpoint_match.group(1)
-        
-        # Try to read relevant API docs
-        docs_file = os.path.join(api_docs_dir, f"{endpoint}.txt")
-        if os.path.exists(docs_file):
-            doc_filename = f"{endpoint}.txt"
-            with open(docs_file, 'r') as f:
-                api_docs = f.read()
-            
-            # Include the complete API documentation
-            api_context = f"""
-            RELEVANT API DOCUMENTATION:
-            
-            Error involves undefined field '{problem_field}' in the '{endpoint}' API.
-            
-            COMPLETE API DOCUMENTATION for {endpoint}:
-            {api_docs}
-            
-            Important: ONLY use fields that are explicitly listed in the documentation above.
-            Do not use '{problem_field}' as it is undefined and not available.
-            
-            If you need to filter by genus/species, you should:
-            1. First query the genome API to get genome_ids
-            2. Then use those IDs with the genome_feature API
-            
-            Example pattern:
-            ```
-            # Get genome_id for Salmonella enterica
-            curl -s "https://www.bv-brc.org/api/genome/?eq(genus,Salmonella)&eq(species,enterica)&select(genome_id)&limit(1)"
-            
-            # Use genome_id to query features
-            curl -s "https://www.bv-brc.org/api/genome_feature/?eq(genome_id,GENOME_ID)&select(feature_id,product)&limit(10)"
-            ```
-            """
-    
-    return api_context, doc_filename
 
 

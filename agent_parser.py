@@ -166,102 +166,43 @@ Text to extract from:
         return []
 
 
+def extract_mcp_actions(content):
+    """
+    Extract MCP tool calls from <action> tags in the content.
+    Args:
+        content (str): The content to extract actions from.
+    Returns:
+        list: A list of dicts with tool_name and parameters.
+    """
+    actions = []
+    action_pattern = re.compile(r'<action>\s*(.*?)\s*</action>', re.DOTALL | re.IGNORECASE)
+    action_contents = action_pattern.findall(content)
+    for block in action_contents:
+        block = block.strip()
+        if not block:
+            continue
+        try:
+            action_json = json.loads(block)
+            if isinstance(action_json, dict) and "tool_name" in action_json and "parameters" in action_json:
+                actions.append(action_json)
+            elif isinstance(action_json, list):
+                for item in action_json:
+                    if isinstance(item, dict) and "tool_name" in item and "parameters" in item:
+                        actions.append(item)
+        except Exception as e:
+            print(f"Error parsing <action> block: {e}\nBlock: {block}")
+    return actions
+
 def parse_commands(response_to_call, together_client=None):
     """
-    Parses the commands from the given response.
-    Gives preference to <action> tags and falls back to <think> tags if no commands are found in <action>.
-    Uses multiple fallback strategies for more robust extraction.
-
+    Parses the MCP tool calls from the given response.
     Args:
-        response_to_call (str): The response containing commands.
-        together_client: The Together client instance to use for LLM calls (optional)
-
+        response_to_call (str): The response containing actions.
+        together_client: (ignored, for compatibility)
     Returns:
-        list: A list of command strings.
+        list: A list of MCP tool call dicts.
     """
-    print(f'response_to_call = {response_to_call}')
-    try:
-        if not response_to_call.strip():
-            print("Received an empty response for commands.")
-            return []
-
-        print(f"Raw response: {response_to_call}")
-
-        commands = []
-
-        # Define regex patterns for <action> tags with case-insensitivity and whitespace handling
-        action_pattern = re.compile(r'<action>\s*(.*?)\s*</action>', re.DOTALL | re.IGNORECASE)
-
-        # Process <action> tags
-        action_contents = action_pattern.findall(response_to_call)
-        print(f"Found {len(action_contents)} <action> tag(s).")
-
-        for content in action_contents:
-            content = content.strip()
-            if not content:
-                continue
-            print("Processing content within <action> tags.")
-            
-            # First, check if the content is valid JSON
-            if is_valid_json(content):
-                print("Content is valid JSON, checking for required fields.")
-                # Create a copy of the content with double curly braces replaced for parsing
-                parsing_content = content.replace('{{', '{').replace('}}', '}')
-                json_data = json.loads(parsing_content)
-                
-                # For JSON arrays
-                if isinstance(json_data, list):
-                    for item in json_data:
-                        if isinstance(item, dict) and "action" in item and "action_input" in item:
-                            commands.append({
-                                "action": item["action"],
-                                "action_input": item["action_input"]
-                            })
-                # For single JSON objects            
-                elif isinstance(json_data, dict) and "action" in json_data and "action_input" in json_data:
-                    commands.append({
-                        "action": json_data["action"],
-                        "action_input": json_data["action_input"]
-                    })
-                else:
-                    print("JSON missing required fields (action and action_input), trying standard JSON parsing.")
-            
-            # If not valid JSON or missing required fields, try JSON extraction
-            if not commands:
-                print("Using standard JSON extraction for action tags.")
-                action_commands = extract_commands(content)
-                if action_commands:
-                    commands.extend(action_commands)
-
-        # If commands found in <action>, return them
-        if commands:
-            print(f"Commands found within <action> tags: {commands}")
-            return commands
-
-        # Final fallback: Try LLM-based extraction
-        if not commands and together_client:
-            print("Attempting LLM-based command extraction as final fallback")
-            llm_commands = extract_commands_with_llm(response_to_call, together_client)
-            if llm_commands:
-                # Process each command from LLM
-                for cmd in llm_commands:
-                    commands.append({
-                        "action": cmd.get("action", "command"),
-                        "action_input": cmd["action_input"]
-                    })
-
-        if not commands:
-            print("No valid commands found in the response.")
-            print(f"Initial input received (response_to_call): {response_to_call}")
-            return []  # Continue returning empty list instead of exiting
-    
-        print(f"Final extracted commands: {commands}")
-        return commands
-
-    except Exception as ex:
-        print(f"Unexpected error while parsing commands: {ex}")
-        print(f"Initial input received (response_to_call): {response_to_call}")
-        return []  # Continue returning empty list instead of exiting
+    return extract_mcp_actions(response_to_call)
 
 def test_parse_commands():
     """Unit tests for parse_commands function."""
