@@ -21,7 +21,7 @@ Output:
 <action>
 {{
     "action": "bash",
-    "action_input": "curl -s \"https://www.bv-brc.org/api/genome/?and(eq(genus,Pseudomonas),eq(species,aeruginosa))&select(genome_id)\""
+    "action_input": "curl -s \"https://www.bv-brc.org/api-bulk/genome/?and(eq(genus,Pseudomonas),eq(species,aeruginosa))&select(genome_id)\""
 }}
 </action>
 
@@ -30,7 +30,7 @@ Output:
 <action>
 {{
     "action": "bash",
-    "action_input": "curl -L \"https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\""
+    "action_input": "curl -L \"https://www.bv-brc.org/api-bulk/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\""
 }}
 </action>
 
@@ -50,7 +50,7 @@ original intent.
 not just examples. State the format to be followed and then follow it. 
 
 Here is some information you can use to help you form the prompt. The base url 
-for the solr endpoints is https://bv-brc.org/api, with the collections listed below:
+for the solr endpoints is https://bv-brc.org/api-bulk, with the collections listed below:
 
     Genome data can be retrieved from the genome collection.
     Antibiotic resistance data can be retrieved from the genome_amr collection.
@@ -89,9 +89,9 @@ for the solr endpoints is https://bv-brc.org/api, with the collections listed be
     Surveillance data can be retrieved from the surveillance collection.
     Taxonomy data can be retrieved from the taxonomy collection.
 
-    To query an endpoint, it's added to the url: https://bv-brc.org/api/genome
-    solr query parameters are added after, for example: https://bv-brc.org/api/genome/?eq(genome_id,<genome_id>)&select(genome_id,genome_name)&limit(2)
-    multiple conditions conditions can be specified using 'and' and 'or', for example: https://bv-brc.org/api/genome/?and(eq(genome_id,<genome_id>),eq(genus,<genus>))
+    To query an endpoint, it's added to the url: https://bv-brc.org/api-bulk/genome
+    solr query parameters are added after, for example: https://bv-brc.org/api-bulk/genome/?eq(genome_id,<genome_id>)&select(genome_id,genome_name)&limit(2)
+    multiple conditions conditions can be specified using 'and' and 'or', for example: https://bv-brc.org/api-bulk/genome/?and(eq(genome_id,<genome_id>),eq(genus,<genus>))
 
 Other tips:
     - Use `limit(1)` (or fewer) to cap the result size
@@ -118,7 +118,7 @@ Other tips:
         The final command is:
         ```
         bash
-        curl -L -H "Accept: application/json" 'https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia),eq(species,coli))&limit(1)'
+        curl -L -H "Accept: application/json" 'https://www.bv-brc.org/api-bulk/genome/?and(eq(genus,Escherichia),eq(species,coli))&limit(1)'
         ```
     </think>
 
@@ -130,7 +130,7 @@ Other tips:
        }},
        {{
            "action": "bash",
-           "action_input": "curl -L \'https://www.bv-brc.org/api/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\'"
+           "action_input": "curl -L \'https://www.bv-brc.org/api-bulk/genome/?and(eq(genus,Escherichia)),eq(species,coli)&limit(1)\'"
        }}
        ]
     </action>

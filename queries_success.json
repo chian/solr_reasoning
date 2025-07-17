@@ -1,0 +1,8 @@
+[
+    "Retrieve all annotated proteins from an Influenza A virus genome.",
+    "Retrieve all structural proteins of a SARS-CoV-2 isolate.",
+    "Retrieve the annotated features of a Salmonella enterica genome.",
+    "Retrieve all virulence factors in a clinical Escherichia coli isolate.",
+    "Detect plasmid-associated genes in a sewage metagenomic dataset.",
+    "Determine if a Salmonella strain carries mobile colistin resistance (mcr) genes."
+] 
