@@ -1,6 +1,7 @@
 from together import Together
 import re
 import os
+import json
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -31,18 +32,25 @@ def remove_think_tags(text: str) -> str:
     """
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
-def query_llm(client, user_query, model_config):
+def query_llm(config, user_query, model_config=None):
     """
     Queries an LLM with the given user query using the provided configuration.
     
     Args:
-        client: The client instance (Together or OpenAI).
+        config (dict): Configuration containing the client and model info.
         user_query (str): The query to send to the LLM.
-        model_config (dict): Configuration for the model.
+        model_config (dict, optional): Override configuration for the model.
     
     Returns:
         str: The response from the LLM.
     """
+    # Use the provided config or fall back to model_config
+    if model_config is None:
+        model_config = config
+    
+    # Get the client from the config
+    client = config['client']
+    
     # Get the model ID from the config
     model_id = model_config.get('model_id', model_config.get('model'))
     
@@ -59,7 +67,12 @@ def query_llm(client, user_query, model_config):
     api_params = model_config.get('api_params', {})
     params.update(api_params)
     
-    # Call the API
+    # Add standard parameters if they exist in the config
+    for param in ['max_tokens', 'temperature']:
+        if param in model_config:
+            params[param] = model_config[param]
+    
+    # Call the API using the client from the config
     response = client.chat.completions.create(**params)
     return response.choices[0].message.content
 
@@ -272,20 +285,20 @@ Assistant:
     
     return filepath
 
-def evaluate_solution_with_llm(user_query, solution, client):
+def evaluate_solution_with_llm(user_query, solution, config):
     """
     Evaluates if a solution actually answers the user's query.
     
     Args:
         user_query (str): The original user query
         solution (str): The derived solution
-        client: The LLM client to use
+        config (dict): Configuration containing the client and model info
     
     Returns:
         tuple: (success_bool, evaluation_text)
     """
     prompt = f"""
-    You are evaluating if this solution ANSWERS THE USER'S QUESTION.
+    You are evaluating if this solution ANSWERS THE USER'S QUESTION IN EXACT TERMS. HYPOTHETICAL PLANS ARE NOT ACCEPTABLE IF IT IS NOT EXECUTED.
 
     User Query: "{user_query}"
     
@@ -294,14 +307,23 @@ def evaluate_solution_with_llm(user_query, solution, client):
     {solution}
     ```
 
-    Determine if this solution satisfactorily answers what the user asked:
+    HINT: Check if any actions failed during execution. Look for:
+    - Error messages like "Invalid request parameters", "error", "failed"
+    - Actions that returned error status
+    - Actions that couldn't be completed
+    - Placeholder text like "INSERT_FROM_PREVIOUS_RESULT" that wasn't replaced
+    These often indicate that the solution is not executable and therefore not a valid solution. 
+    It is okay to have an error and either fix it or try another approach, but if the critical information for answering the query is never obtained, then it is not a valid solution.
 
-    1. COMPLETE: Solution fully addresses the user's question
+        Determine if this solution satisfactorily answers what the user asked:
+
+    1. COMPLETE: Solution fully addresses the user's question in exact terms
        - Provides all information requested
        - Answer is directly relevant to the query
+       - Necessary information is obtained
        - A reasonable user would be satisfied
 
-    2. PARTIAL: Solution partially addresses the user's question
+    2. PARTIAL: Solution partially addresses the user's question. e.g. some critical actions failed or some information is missing.
        - Some relevant information, but incomplete
        - Missing important details requested in the query
        - A user would need to ask follow-up questions
@@ -311,21 +333,22 @@ def evaluate_solution_with_llm(user_query, solution, client):
        - Does not answer what was asked
        - A user would need to restart their inquiry
 
-    Answer with COMPLETE, PARTIAL, or FAILURE and explain your reasoning.
+    In your answer, you must start with COMPLETE, PARTIAL, or FAILURE as the first word in all caps followed by a : and then the reason. Keep it brief and make sure to follow this format. Make sure to only begin with COMPLETE, PARTIAL, or FAILURE.
     """
-    # Create a proper model config
+    # Create a proper model config for o3-mini
     model_config = {
-        "model": "deepseek-ai/DeepSeek-R1",
+        "model": "o3-mini",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 32000,
-        "temperature": 0.7
+        ]
     }
     
-    evaluation = query_llm(client, prompt, model_config)
-    success = "complete" in evaluation.lower()
+    evaluation = query_llm(config, prompt, model_config)
+    
+    # More strict success criteria - must start with COMPLETE: in all caps
+    evaluation_upper = evaluation.strip()
+    success = evaluation_upper.startswith("COMPLETE:")
     
     return success, evaluation
 
@@ -440,36 +463,82 @@ def update_commands_with_llm(user_query, commands, command_index, cmd, observati
     commands[command_index + 1] = new_cmd
     return True, commands, "Commands updated based on execution result"
 
-def fix_failed_command_with_llm(user_query, cmd, observation_text, classification, client):
+def fix_failed_command_with_llm(user_query, action_dict, observation_text, classification, config):
     """
     When a command fails, prompts the LLM to fix just that one command.
     
     Args:
         user_query (str): The original user query
-        cmd (dict): The failed command dictionary with action and action_input keys
+        action_dict (dict): The failed action dictionary with tool_name and parameters keys
         observation_text (str): The output of the failed command
         classification (str): The classification of the failed command
-        client: The LLM client to use
+        config (dict): Configuration containing the client and model info
     
     Returns:
-        tuple: (fixed_command, llm_response)
+        tuple: (fixed_action, llm_response)
     """
     import re
     # Limit the observation to a reasonable size
     observation_lines = observation_text.splitlines()[:100]
     observation_text = "\n".join(observation_lines)
-    # Remove API docs context logic
-    # Just prompt the LLM to fix the command based on the error
-    fix_prompt = f"The following command failed:\n{cmd}\n\nError:\n{observation_text}\n\nPlease suggest a corrected command."
-    fix_response = query_llm(client, fix_prompt, {"model": "deepseek-ai/DeepSeek-R1", "messages": [{"role": "user", "content": fix_prompt}], "max_tokens": 32000, "temperature": 0.7})
-    fixed_match = re.search(r'"action_input"\s*:\s*"([^"]+)"', fix_response)
-    if fixed_match:
-        fixed_cmd = {
-            "action": cmd["action"],
-            "action_input": fixed_match.group(1).strip()
-        }
-    else:
-        fixed_cmd = cmd
-    return fixed_cmd, fix_response
+    
+    # Create a more detailed prompt for fixing the command
+    fix_prompt = f"""A bioinformatics command failed with an error. Please fix the command based on the error message.
+
+Original Action:
+{json.dumps(action_dict, indent=2)}
+
+Error Message:
+{observation_text}
+
+Please provide a corrected version of the action. The action should use the same tool_name but with corrected parameters.
+
+Return ONLY a JSON object with the corrected action in this exact format:
+{{
+    "tool_name": "{action_dict['tool_name']}",
+    "parameters": {{
+        "command": "corrected command here"
+    }}
+}}
+
+Common fixes:
+- Fix syntax errors in p3-tools commands
+- Correct parameter names or values
+- Fix typos in field names
+- Ensure proper quoting
+
+If you cannot fix the command, return: {{"unfixable": true}}"""
+    
+    # Use the config-based query_llm
+    model_config = {
+        "model": "deepseek-ai/DeepSeek-R1",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant that fixes bioinformatics commands."},
+            {"role": "user", "content": fix_prompt}
+        ],
+        "max_tokens": 1000,
+        "temperature": 0.1
+    }
+    
+    fix_response = query_llm(config, fix_prompt, model_config)
+    
+    # Try to parse the JSON response
+    try:
+        fixed_action = json.loads(fix_response.strip())
+        if fixed_action.get("unfixable"):
+            return None, fix_response
+        return fixed_action, fix_response
+    except json.JSONDecodeError:
+        # If response isn't valid JSON, try to extract JSON from it
+        json_match = re.search(r'\{.*\}', fix_response, re.DOTALL)
+        if json_match:
+            try:
+                fixed_action = json.loads(json_match.group())
+                if fixed_action.get("unfixable"):
+                    return None, fix_response
+                return fixed_action, fix_response
+            except json.JSONDecodeError:
+                pass
+        return None, fix_response
 
 
