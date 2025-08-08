@@ -52,9 +52,7 @@ def run_p3_tool(command: List[str], input_data: str = None, timeout: int = 300,
         # Source the BV-BRC environment before running the command
         command_str = ' '.join(command)
         
-        # Add shell piping for limiting results if specified
-        if limit_results and limit_results > 0:
-            command_str += f" | head -n {limit_results + 3}"  # +3 for welcome line, empty line, and header
+        # No shell piping - limit is handled by p3 tools directly
         
         full_command = f"source /Applications/BV-BRC.app/user-env.sh && {command_str}"
         
@@ -362,7 +360,7 @@ def p3_all_contigs(genome_id: Optional[str] = None,
         additional_filters: Additional --eq filters (format: "field,value")
         attributes: Fields to return (if None, returns default set)
         count_only: Return count instead of records
-        limit: Maximum number of results (implemented via shell piping)
+        limit: Maximum number of results
     
     Returns:
         JSON string with contig data or error information
@@ -393,10 +391,13 @@ def p3_all_contigs(genome_id: Optional[str] = None,
                            'description', 'sequence_type', 'topology']
             for attr in default_attrs:
                 command.extend(['--attr', attr])
+        
+        # Add limit parameter if specified and not doing count_only
+        if limit:
+            command.extend(['--limit', str(limit)])
     
-    # Use shell piping for limiting unless doing count_only
-    limit_results = None if count_only else limit
-    result = robust_p3_execution(command, limit_results=limit_results)
+    # Execute the command
+    result = robust_p3_execution(command)
     
     if result['success']:
         if count_only:
@@ -457,10 +458,13 @@ def p3_all_drugs(drug_name: Optional[str] = None,
                            'cas_id', 'description']
             for attr in default_attrs:
                 command.extend(['--attr', attr])
+        
+        # Add limit parameter if specified and not doing count_only
+        if limit:
+            command.extend(['--limit', str(limit)])
     
-    # Use shell piping for limiting unless doing count_only
-    limit_results = None if count_only else limit
-    result = robust_p3_execution(command, limit_results=limit_results)
+    # Execute the command
+    result = robust_p3_execution(command)
     
     if result['success']:
         if count_only:
@@ -483,6 +487,7 @@ def p3_all_genomes(species: Optional[str] = None,
                    attributes: Optional[List[str]] = None,
                    count_only: bool = False,
                    limit: int = 1000) -> str:
+    print(f"DEBUG: p3_all_genomes called with species={species}, limit={limit}")
     """
     Get complete genome records using p3-all-genomes
     
@@ -527,10 +532,13 @@ def p3_all_genomes(species: Optional[str] = None,
                            'plasmids', 'contigs', 'taxon_id', 'completion_date']
             for attr in default_attrs:
                 command.extend(['--attr', attr])
+        
+        # Add limit parameter if specified and not doing count_only
+        if limit:
+            command.extend(['--limit', str(limit)])
     
-    # Use shell piping for limiting unless doing count_only
-    limit_results = None if count_only else limit
-    result = robust_p3_execution(command, limit_results=limit_results)
+    # Execute the command
+    result = robust_p3_execution(command)
     
     if result['success']:
         if count_only:
@@ -591,10 +599,13 @@ def p3_all_subsystem_roles(subsystem_name: Optional[str] = None,
                            'role_type', 'role_description']
             for attr in default_attrs:
                 command.extend(['--attr', attr])
+        
+        # Add limit parameter if specified and not doing count_only
+        if limit:
+            command.extend(['--limit', str(limit)])
     
-    # Use shell piping for limiting unless doing count_only
-    limit_results = None if count_only else limit
-    result = robust_p3_execution(command, limit_results=limit_results)
+    # Execute the command
+    result = robust_p3_execution(command)
     
     if result['success']:
         if count_only:
@@ -725,10 +736,13 @@ def p3_all_taxonomies(taxon_name: Optional[str] = None,
                            'lineage_names', 'genetic_code']
             for attr in default_attrs:
                 command.extend(['--attr', attr])
+        
+        # Add limit parameter if specified and not doing count_only
+        if limit:
+            command.extend(['--limit', str(limit)])
     
-    # Use shell piping for limiting unless doing count_only
-    limit_results = None if count_only else limit
-    result = robust_p3_execution(command, limit_results=limit_results)
+    # Execute the command
+    result = robust_p3_execution(command)
     
     if result['success']:
         if count_only:
@@ -747,7 +761,8 @@ def p3_all_taxonomies(taxon_name: Optional[str] = None,
 
 @mcp.tool()
 def p3_get_genome_data(genome_ids: List[str],
-                       attributes: Optional[List[str]] = None) -> str:
+                       attributes: Optional[List[str]] = None,
+                       limit: Optional[int] = None) -> str:
     """
     Get detailed genome data using p3-get-genome-data
     
@@ -775,6 +790,10 @@ def p3_get_genome_data(genome_ids: List[str],
     stdin_data = '\n'.join(input_lines)
     
     command = ['p3-get-genome-data']
+    
+    # Add limit
+    if limit:
+        command.extend(['--limit', str(limit)])
     
     # Add attributes
     if attributes:
@@ -806,7 +825,8 @@ def p3_get_genome_data(genome_ids: List[str],
 
 @mcp.tool()
 def p3_get_genome_contigs(genome_ids: List[str],
-                         attributes: Optional[List[str]] = None) -> str:
+                         attributes: Optional[List[str]] = None,
+                         limit: Optional[int] = None) -> str:
     """
     Get contigs for specific genomes using p3-get-genome-contigs
     
@@ -832,6 +852,10 @@ def p3_get_genome_contigs(genome_ids: List[str],
     stdin_data = '\n'.join(input_lines)
     
     command = ['p3-get-genome-contigs']
+    
+    # Add limit
+    if limit:
+        command.extend(['--limit', str(limit)])
     
     if attributes:
         for attr in attributes:
@@ -859,7 +883,8 @@ def p3_get_genome_contigs(genome_ids: List[str],
 def p3_get_genome_features(genome_ids: List[str],
                           feature_type: Optional[str] = None,
                           gene_name: Optional[str] = None,
-                          attributes: Optional[List[str]] = None) -> str:
+                          attributes: Optional[List[str]] = None,
+                          limit: Optional[int] = None) -> str:
     """
     Get genome features using p3-get-genome-features
     
@@ -868,6 +893,7 @@ def p3_get_genome_features(genome_ids: List[str],
         feature_type: Filter by feature type (CDS, rRNA, etc.)
         gene_name: Filter by gene name
         attributes: Fields to return
+        limit: Maximum number of features to return
     
     Returns:
         JSON string with feature data or error information
@@ -887,6 +913,10 @@ def p3_get_genome_features(genome_ids: List[str],
         command.extend(['--eq', f'feature_type,{feature_type}'])
     if gene_name:
         command.extend(['--eq', f'gene,{gene_name}'])
+    
+    # Add limit
+    if limit:
+        command.extend(['--limit', str(limit)])
     
     # Add attributes
     if attributes:
@@ -922,7 +952,8 @@ def p3_get_genome_features(genome_ids: List[str],
 
 @mcp.tool()
 def p3_get_feature_data(feature_ids: List[str],
-                       attributes: Optional[List[str]] = None) -> str:
+                       attributes: Optional[List[str]] = None,
+                       limit: Optional[int] = None) -> str:
     """
     Get detailed feature data using p3-get-feature-data
     
@@ -944,6 +975,10 @@ def p3_get_feature_data(feature_ids: List[str],
     stdin_data = '\n'.join(input_lines)
     
     command = ['p3-get-feature-data']
+    
+    # Add limit
+    if limit:
+        command.extend(['--limit', str(limit)])
     
     if attributes:
         for attr in attributes:

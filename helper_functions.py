@@ -385,17 +385,16 @@ def generate_final_solution_with_llm(user_query, successful_commands, client):
     I am asking for a solution summary only.
     """
     
-    # Create a proper model config
+    # Use the OpenAI config directly for solution synthesis
     model_config = {
-        "model": "gpt-4o",
+        "model": client["model"],
         "messages": [
             {"role": "user", "content": solution_prompt}
         ],
-        "max_tokens": 8000,
-        "temperature": 0.7
+        "max_completion_tokens": 8000  # o3-mini uses max_completion_tokens and doesn't support temperature
     }
     
-    # Generate the solution
+    # Generate the solution using the provided client config
     solution_raw = query_llm(client, solution_prompt, model_config)
     
     # Clean up the solution
