@@ -1,0 +1,470 @@
+AVAILABLE TOOLS (tool_name) AND THEIR PARAMETERS:
+
+DATA RETRIEVAL TOOLS:
+1. p3_all_contigs
+   - Parameters: genome_id (str, optional, optional), length_min (int, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get contig/sequence data using p3-all-contigs
+   - Example: {"genome_id": "83333.111", "limit": 10}
+
+2. p3_all_drugs
+   - Parameters: drug_name (str, optional, optional), drug_class (str, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get drug/antimicrobial data using p3-all-drugs
+   - Example: {"limit": 10}
+
+3. p3_all_genomes
+   - Parameters: species (str, optional, optional), strain (str, optional, optional), genome_status (str, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get complete genome records using p3-all-genomes
+   - Example: {"species": "Escherichia coli", "limit": 10}
+
+4. p3_all_subsystem_roles
+   - Parameters: subsystem_name (str, optional, optional), role_name (str, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get subsystem functional roles using p3-all-subsystem-roles
+   - Example: {"limit": 10}
+
+5. p3_all_subsystems
+   - Parameters: subsystem_class (str, optional, optional), subsystem_name (str, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get subsystem data using p3-all-subsystems
+   - Example: {"limit": 10}
+
+6. p3_all_taxonomies
+   - Parameters: taxon_name (str, optional, optional), taxon_rank (str, optional, optional), taxon_id (int, optional, optional), additional_filters (complex, optional), attributes (complex, optional), count_only (bool, default=False), limit (int, default=1000)
+   - Description: Get taxonomic data using p3-all-taxonomies
+   - Example: {"limit": 10}
+
+7. p3_get_genome_data
+   - Parameters: genome_ids (list), attributes (complex, optional)
+   - Description: Get detailed genome data using p3-get-genome-data
+   - Example: {"genome_ids": ["83333.111"]}
+
+8. p3_get_genome_contigs
+   - Parameters: genome_ids (list), attributes (complex, optional)
+   - Description: Get contigs for specific genomes using p3-get-genome-contigs
+   - Example: {"genome_ids": ["83333.111"]}
+
+9. p3_get_genome_features
+   - Parameters: genome_ids (list), feature_type (str, optional, optional), gene_name (str, optional, optional), attributes (complex, optional)
+   - Description: Get genome features using p3-get-genome-features
+   - Example: {"genome_ids": ["83333.111"]}
+
+10. p3_get_feature_data
+   - Parameters: feature_ids (list), attributes (complex, optional)
+   - Description: Get detailed feature data using p3-get-feature-data
+   - Example: {"feature_ids": ["fig|83333.111.peg.1"]}
+
+11. p3_get_feature_sequence
+   - Parameters: feature_ids (list), sequence_type (str, default='dna')
+   - Description: Get sequences for features using p3-get-feature-sequence
+   - Example: {"feature_ids": ["fig|83333.111.peg.1"]}
+
+12. p3_get_feature_subsystems
+   - Parameters: feature_ids (list), attributes (complex, optional)
+   - Description: Get subsystem associations for features using p3-get-feature-subsystems
+   - Example: {"feature_ids": ["fig|83333.111.peg.1"]}
+
+13. p3_get_subsystem_features
+   - Parameters: subsystem_ids (list), genome_ids (complex, optional), attributes (complex, optional)
+   - Description: Get features that participate in specific subsystems using p3-get-subsystem-features
+   - Example: {"subsystem_ids": "example_value", "genome_ids": "83333.111"}
+
+14. p3_get_drug_genomes
+   - Parameters: drug_ids (list), attributes (complex, optional)
+   - Description: Get genomes with drug resistance/susceptibility data using p3-get-drug-genomes
+   - Example: {"drug_ids": "example_value"}
+
+15. p3_get_family_data
+   - Parameters: family_ids (list), family_type (str, default='plfam'), attributes (complex, optional)
+   - Description: Get protein family data using p3-get-family-data
+   - Example: {"family_ids": "example_value"}
+
+16. p3_get_taxonomy_data
+   - Parameters: taxon_ids (list), attributes (complex, optional)
+   - Description: Get detailed taxonomic data for taxon IDs using p3-get-taxonomy-data
+   - Example: {"taxon_ids": 100}
+
+17. genome_to_features_pipeline
+   - Parameters: species (str), feature_type (str, default='CDS')
+   - Description: Pipeline: Find genomes by species -> Get features
+   - Example: {"species": "Escherichia coli"}
+
+18. find_genes_by_name_across_species
+   - Parameters: gene_name (str), species (str)
+   - Description: Find genes by name within a specific species
+   - Example: {"gene_name": "example_value", "species": "Escherichia coli"}
+
+19. batch_process_genomes
+   - Parameters: genome_ids (list), batch_size (int, default=100)
+   - Description: Process large genome lists in manageable batches
+   - Example: {"genome_ids": ["83333.111"]}
+
+COMPUTATIONAL TOOLS:
+20. p3_submit_blast
+   - Parameters: query_sequences (complex), output_path (str), output_name (str), program (str, default='blastp'), database (str, default='nr'), evalue (float, default=0.001), max_target_seqs (int, default=100), additional_params (complex, optional)
+   - Description: Submit BLAST similarity search job
+   - Example: {"query_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+
+21. p3_submit_msa
+   - Parameters: sequences (complex), output_path (str), output_name (str), alignment_method (str, default='muscle'), additional_params (complex, optional)
+   - Description: Submit Multiple Sequence Alignment job
+   - Example: {"sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+
+22. p3_submit_gene_tree
+   - Parameters: gene_sequences (complex), output_path (str), output_name (str), tree_method (str, default='FastTree'), alignment_method (str, default='muscle'), additional_params (complex, optional)
+   - Description: Submit gene phylogenetic tree construction job
+   - Example: {"gene_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+
+23. p3_submit_codon_tree
+   - Parameters: gene_sequences (complex), output_path (str), output_name (str), codon_position (str, default='123'), tree_method (str, default='FastTree'), additional_params (complex, optional)
+   - Description: Submit codon-based phylogenetic tree job
+   - Example: {"gene_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+
+24. p3_submit_genome_annotation
+   - Parameters: contigs_file (str), output_path (str), output_name (str), domain (str, default='Bacteria'), taxonomy_id (int, optional, optional), annotation_scheme (str, default='RAST'), additional_params (complex, optional)
+   - Description: Submit genome annotation job using RAST
+   - Example: {"contigs_file": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+25. p3_submit_genome_assembly
+   - Parameters: reads_files (list), output_path (str), output_name (str), assembly_strategy (str, default='auto'), recipe (str, default='unicycler'), additional_params (complex, optional)
+   - Description: Submit genome assembly job
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+26. p3_submit_proteome_comparison
+   - Parameters: genome_ids (list), output_path (str), output_name (str), comparison_type (str, default='bidirectional'), evalue_cutoff (float, default=1e-05), additional_params (complex, optional)
+   - Description: Submit proteome comparison job (bidirectional BLAST)
+   - Example: {"genome_ids": ["83333.111"], "output_path": "example_value", "output_name": "example_value"}
+
+27. p3_submit_variation_analysis
+   - Parameters: reads_files (list), reference_genome (str), output_path (str), output_name (str), mapper (str, default='bwa'), caller (str, default='gatk'), additional_params (complex, optional)
+   - Description: Submit variation analysis job (SNP/variant calling)
+   - Example: {"reads_files": "example_value", "reference_genome": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+28. p3_submit_rnaseq
+   - Parameters: reads_files (list), reference_genome (str), output_path (str), output_name (str), analysis_type (str, default='differential'), mapper (str, default='hisat2'), additional_params (complex, optional)
+   - Description: Submit RNA-Seq analysis job
+   - Example: {"reads_files": "example_value", "reference_genome": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+29. p3_submit_cga
+   - Parameters: reads_files (list), output_path (str), output_name (str), recipe (str, default='comprehensive'), reference_genome (str, optional, optional), additional_params (complex, optional)
+   - Description: Submit Comprehensive Genome Analysis (CGA) job
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+30. p3_submit_fastqutils
+   - Parameters: reads_files (list), output_path (str), output_name (str), operation (str, default='trim'), quality_threshold (int, default=20), additional_params (complex, optional)
+   - Description: Submit FASTQ utility operations job (trimming, filtering, etc.)
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+31. p3_submit_taxonomic_classification
+   - Parameters: reads_files (list), output_path (str), output_name (str), classifier (str, default='kraken2'), database (str, default='standard'), additional_params (complex, optional)
+   - Description: Submit taxonomic classification job
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+32. p3_submit_metagenome_binning
+   - Parameters: contigs_file (str), reads_files (list), output_path (str), output_name (str), binning_method (str, default='metabat2'), additional_params (complex, optional)
+   - Description: Submit metagenome binning job
+   - Example: {"contigs_file": "example_value", "reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+33. p3_submit_metagenomic_read_mapping
+   - Parameters: reads_files (list), reference_genomes (list), output_path (str), output_name (str), mapper (str, default='bwa'), additional_params (complex, optional)
+   - Description: Submit metagenomic read mapping job
+   - Example: {"reads_files": "example_value", "reference_genomes": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+34. p3_submit_sars2_analysis
+   - Parameters: reads_files (list), output_path (str), output_name (str), analysis_type (str, default='comprehensive'), reference_genome (str, default='NC_045512.2'), additional_params (complex, optional)
+   - Description: Submit SARS-CoV-2 specialized analysis job
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+35. p3_submit_sars2_assembly
+   - Parameters: reads_files (list), output_path (str), output_name (str), assembly_strategy (str, default='consensus'), reference_genome (str, default='NC_045512.2'), additional_params (complex, optional)
+   - Description: Submit SARS-CoV-2 specialized assembly job
+   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
+
+36. p3_monitor_job
+   - Parameters: job_id (str), poll_interval (int, default=30), max_wait_time (int, default=3600)
+   - Description: Monitor a computational job until completion or timeout
+   - Example: {"job_id": "example_value"}
+
+37. p3_check_job_status
+   - Parameters: job_id (str)
+   - Description: Check current status of a computational job
+   - Example: {"job_id": "example_value"}
+
+38. p3_get_job_results
+   - Parameters: job_name (str), result_type (str, default='summary')
+   - Description: Retrieve and parse computational job results
+   - Example: {"job_name": "example_value"}
+
+UTILITY TOOLS:
+39. p3_login
+   - Parameters: username (str, optional, optional), password (str, optional, optional)
+   - Description: Authenticate with BV-BRC using p3-login
+   - Example: {}
+
+40. p3_logout
+   - Parameters: {} (no parameters)
+   - Description: End BV-BRC authentication session
+   - Example: {}
+
+41. p3_whoami
+   - Parameters: {} (no parameters)
+   - Description: Check current BV-BRC authentication status
+   - Example: {}
+
+42. p3_ls
+   - Parameters: path (str, default='/rbutler@bvbrc/home'), long_format (bool, default=False), recursive (bool, default=False)
+   - Description: List workspace files using p3-ls
+   - Example: {}
+
+43. p3_cp_to_workspace
+   - Parameters: local_path (str), workspace_path (str)
+   - Description: Copy local file to workspace
+   - Example: {"local_path": "example_value", "workspace_path": "example_value"}
+
+44. p3_cp_from_workspace
+   - Parameters: workspace_path (str), local_path (str)
+   - Description: Copy workspace file to local system
+   - Example: {"workspace_path": "example_value", "local_path": "example_value"}
+
+45. p3_cp_within_workspace
+   - Parameters: source_path (str), dest_path (str)
+   - Description: Copy file within workspace
+   - Example: {"source_path": "example_value", "dest_path": "example_value"}
+
+46. p3_rm
+   - Parameters: workspace_path (str), recursive (bool, default=False), force (bool, default=False)
+   - Description: Remove workspace files or directories
+   - Example: {"workspace_path": "example_value"}
+
+47. p3_cat
+   - Parameters: workspace_path (str), max_lines (int, optional, optional)
+   - Description: Display workspace file contents
+   - Example: {"workspace_path": "example_value"}
+
+48. p3_count_simple
+   - Parameters: input_data (str)
+   - Description: Count lines/records in input data (simple implementation)
+   - Example: {"input_data": "example_value"}
+
+49. p3_extract_columns_simple
+   - Parameters: input_data (str), columns (list)
+   - Description: Extract specific columns from tabular data (simple implementation)
+   - Example: {"input_data": "example_value", "columns": "example_value"}
+
+50. p3_check_job_status
+   - Parameters: job_id (str)
+   - Description: Check current status of a computational job
+   - Example: {"job_id": "example_value"}
+
+51. p3_mkdir
+   - Parameters: workspace_path (str), parents (bool, default=True)
+   - Description: Create workspace directory (if p3-mkdir exists)
+   - Example: {"workspace_path": "example_value"}
+
+52. p3_extract
+   - Parameters: input_data (str), extract_pattern (str), output_format (str, default='tsv')
+   - Description: Extract data using p3-extract (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value", "extract_pattern": "example_value"}
+
+53. p3_collate
+   - Parameters: input_files (list), collation_key (str, optional, optional), output_format (str, default='tsv')
+   - Description: Collate data from multiple sources (NOT YET IMPLEMENTED)
+   - Example: {"input_files": "example_value"}
+
+54. p3_format_results
+   - Parameters: input_data (str), output_format (str, default='table'), headers (complex, optional), delimiter (str, default='	')
+   - Description: Format P3-Tools results for display (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value", "delimiter": 10}
+
+55. p3_aggregates_to_html
+   - Parameters: input_data (str), title (str, default='P3-Tools Results'), template (str, optional, optional)
+   - Description: Convert aggregate results to HTML (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value"}
+
+56. p3_head
+   - Parameters: input_data (str), lines (int, default=10)
+   - Description: Display first N lines of data (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value"}
+
+57. p3_tail
+   - Parameters: input_data (str), lines (int, default=10)
+   - Description: Display last N lines of data (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value"}
+
+58. p3_sort
+   - Parameters: input_data (str), columns (complex, optional), unique (bool, default=False), reverse (bool, default=False)
+   - Description: Sort tabular data by specified columns (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value"}
+
+59. p3_join
+   - Parameters: left_data (str), right_data (str), join_column (str), join_type (str, default='inner')
+   - Description: Join two data tables on specified column (NOT YET IMPLEMENTED)
+   - Example: {"left_data": "example_value", "right_data": "example_value", "join_column": "example_value"}
+
+60. p3_pivot
+   - Parameters: input_data (str), index_column (str), value_column (str), pivot_column (str)
+   - Description: Create pivot table from data (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value", "index_column": "example_value", "value_column": "example_value", "pivot_column": "example_value"}
+
+61. p3_tbl_to_fasta
+   - Parameters: input_data (str), sequence_column (str), id_column (str, optional, optional), description_column (str, optional, optional)
+   - Description: Convert tabular data to FASTA format (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value", "sequence_column": "MKTVRQERLK..."}
+
+62. p3_tbl_to_html
+   - Parameters: input_data (str), title (str, default='P3-Tools Results'), styling (str, default='basic')
+   - Description: Convert tabular data to HTML table (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value"}
+
+63. p3_stats
+   - Parameters: input_data (str), stat_column (str), group_column (str, optional, optional)
+   - Description: Calculate statistics for numeric columns (NOT YET IMPLEMENTED)
+   - Example: {"input_data": "example_value", "stat_column": "example_value"}
+
+64. p3_qstat
+   - Parameters: detailed (bool, default=False)
+   - Description: Query P3-Tools system status and job queue (NOT YET IMPLEMENTED)
+   - Example: {}
+
+65. batch_file_upload
+   - Parameters: local_files (list), workspace_dir (str)
+   - Description: Upload multiple files to workspace directory
+   - Example: {"local_files": "example_value", "workspace_dir": "example_value"}
+
+66. batch_file_download
+   - Parameters: workspace_dir (str), local_dir (str), file_patterns (complex, optional)
+   - Description: Download multiple files from workspace directory
+   - Example: {"workspace_dir": "example_value", "local_dir": "example_value"}
+
+67. workspace_cleanup
+   - Parameters: workspace_dir (str), keep_patterns (complex, optional), dry_run (bool, default=True)
+   - Description: Clean up workspace directory by removing files (with safety dry-run default)
+   - Example: {"workspace_dir": "example_value"}
+
+REST API TOOLS:
+68. get_genomes_by_species
+   - Parameters: species (str), limit (int, default=50), offset (int, default=0)
+   - Description: Get genomes for a specific species
+   - Example: {"species": "Escherichia coli", "limit": 10}
+
+69. get_complete_genomes
+   - Parameters: species (str), limit (int, default=20), offset (int, default=0)
+   - Description: Get only complete genomes for a species
+   - Example: {"species": "Escherichia coli", "limit": 10}
+
+70. get_genomes_by_ids
+   - Parameters: genome_ids (list)
+   - Description: Get specific genomes by their IDs
+   - Example: {"genome_ids": ["83333.111"]}
+
+71. find_similar_genomes
+   - Parameters: target_species (str), target_strain (str, optional, optional), min_genome_length (int, optional, optional)
+   - Description: Find genomes similar to target criteria
+   - Example: {"target_species": "Escherichia coli"}
+
+72. genome_feature_summary
+   - Parameters: genome_id (str)
+   - Description: Generate comprehensive feature summary for a genome
+   - Example: {"genome_id": "83333.111"}
+
+73. get_genes_by_name
+   - Parameters: gene_name (str), genome_ids (complex, optional), limit (int, default=100), offset (int, default=0)
+   - Description: Find genes by name across genomes
+   - Example: {"gene_name": "example_value", "genome_ids": "83333.111", "limit": 10}
+
+74. get_cds_features
+   - Parameters: genome_id (str), limit (int, default=1000), offset (int, default=0)
+   - Description: Get all CDS features for a genome
+   - Example: {"genome_id": "83333.111", "limit": 10}
+
+75. search_genes_by_product
+   - Parameters: product_keyword (str), genome_ids (complex, optional), limit (int, default=100), offset (int, default=0)
+   - Description: Search genes by product description
+   - Example: {"product_keyword": "example_value", "genome_ids": "83333.111", "limit": 10}
+
+76. analyze_gene_across_genomes
+   - Parameters: gene_name (str), species (str), max_genomes (int, default=50)
+   - Description: Analyze a specific gene across multiple genomes
+   - Example: {"gene_name": "example_value", "species": "Escherichia coli"}
+
+77. get_protein_domains
+   - Parameters: patric_id (str)
+   - Description: Get all protein domains for a specific gene
+   - Example: {"patric_id": "example_value"}
+
+78. find_proteins_with_domain
+   - Parameters: domain_description (str), limit (int, default=100), offset (int, default=0)
+   - Description: Find proteins containing a specific domain
+   - Example: {"domain_description": "example_value", "limit": 10}
+
+79. get_genome_sequence
+   - Parameters: genome_id (str)
+   - Description: Get complete genome sequence
+   - Example: {"genome_id": "83333.111"}
+
+80. extract_gene_sequence
+   - Parameters: genome_id (str), start (int), end (int), strand (str)
+   - Description: Extract gene sequence using coordinates
+   - Example: {"genome_id": "83333.111", "start": 100, "end": 100, "strand": "example_value"}
+
+81. get_taxonomy_info
+   - Parameters: taxon_id (str, optional, optional), taxon_name (str, optional, optional)
+   - Description: Retrieve taxonomic information by ID or name
+   - Example: {}
+
+82. get_lineage_for_organism
+   - Parameters: organism_name (str)
+   - Description: Get complete taxonomic lineage for an organism
+   - Example: {"organism_name": "example_value"}
+
+83. get_subsystems_for_genome
+   - Parameters: genome_id (str)
+   - Description: Get all subsystems present in a genome
+   - Example: {"genome_id": "83333.111"}
+
+84. find_genomes_with_subsystem
+   - Parameters: subsystem_name (str), limit (int, default=50), offset (int, default=0)
+   - Description: Find genomes containing a specific subsystem
+   - Example: {"subsystem_name": "example_value", "limit": 10}
+
+85. get_pathways_for_genome
+   - Parameters: genome_name (str)
+   - Description: Get all pathways present in a genome
+   - Example: {"genome_name": "example_value"}
+
+86. find_genomes_with_pathway
+   - Parameters: pathway_name (str), limit (int, default=50), offset (int, default=0)
+   - Description: Find genomes containing a specific pathway
+   - Example: {"pathway_name": "example_value", "limit": 10}
+
+87. get_antibiotic_resistance_genes
+   - Parameters: genome_id (str)
+   - Description: Get antibiotic resistance genes for a genome
+   - Example: {"genome_id": "83333.111"}
+
+88. find_genes_for_antibiotic
+   - Parameters: antibiotic_name (str), limit (int, default=50), offset (int, default=0)
+   - Description: Find genes associated with resistance to specific antibiotic
+   - Example: {"antibiotic_name": "example_value", "limit": 10}
+
+89. get_virulence_factors
+   - Parameters: genome_id (str)
+   - Description: Get virulence factor genes for a genome
+   - Example: {"genome_id": "83333.111"}
+
+90. get_amr_profile
+   - Parameters: genome_id (str)
+   - Description: Get complete AMR profile for a genome
+   - Example: {"genome_id": "83333.111"}
+
+91. compare_amr_methods
+   - Parameters: limit (int, default=1000), offset (int, default=0)
+   - Description: Compare performance of different AMR prediction methods
+   - Example: {"limit": 10}
+
+92. comprehensive_genome_analysis
+   - Parameters: genome_id (str)
+   - Description: Complete analysis combining multiple endpoints
+   - Example: {"genome_id": "83333.111"}
+
+93. functional_comparison
+   - Parameters: genome_ids (list)
+   - Description: Compare functional profiles across multiple genomes
+   - Example: {"genome_ids": ["83333.111"]}

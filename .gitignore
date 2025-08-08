@@ -169,3 +169,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+query_results/
+.aider*
+
+# Exclude all directories starting with query_
+query_*/
+
+# Ignore all .zip files
+*.zip
