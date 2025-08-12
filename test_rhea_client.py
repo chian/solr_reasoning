@@ -11,7 +11,7 @@ from proxystore.connectors.redis import RedisConnector, RedisKey
 from proxystore.store import Store
 import cloudpickle
 
-from mcp.types import Tool
+from mcp.types import Tool, Resource, BlobResourceContents, TextResourceContents
 
 
 async def test_rhea_client(
@@ -69,6 +69,19 @@ async def test_rhea_client(
         print(f"Selected tool: {selected_tool.name}")
         print(f"Tool schema: {selected_tool.inputSchema}")
 
+        # Get documentation (resource) of the tool
+        resources: list[Resource] = await client.list_resources()
+
+        tool_resource = next(
+            (r for r in resources if str(r.uri).endswith(f"/{selected_tool.name}")),
+            None,
+        )
+
+        if tool_resource:
+            tool_resource_content = await client.read_resource(tool_resource.uri)
+            if isinstance(tool_resource_content[0], TextResourceContents):
+                print(f"Tool resource: {tool_resource_content[0].text}")
+
         print("\n--- 2. Uploading FASTA file ---")
         # Upload the FASTA file and get the Redis key
         file_key = file_manager.upload_file(fasta_path)
@@ -114,7 +127,9 @@ if __name__ == "__main__":
         description="Test RheaClient with FASTA to FASTQ conversion"
     )
     parser.add_argument("fasta_path", help="Path to the FASTA file to convert")
-    parser.add_argument("--mcp-url", default="http://localhost:3001/mcp", help="URL of RheaMCP server")
+    parser.add_argument(
+        "--mcp-url", default="http://localhost:3001/mcp", help="URL of RheaMCP server"
+    )
     parser.add_argument(
         "--redis-host", default="localhost", help="Redis server hostname"
     )

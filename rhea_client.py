@@ -1,11 +1,20 @@
 from __future__ import annotations
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel, PrivateAttr, AnyUrl
 from typing import Any
 
 # MCP imports
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
-from mcp.types import CallToolResult, ListToolsResult, Tool
+from mcp.types import (
+    CallToolResult,
+    ListToolsResult,
+    ListResourcesResult,
+    ReadResourceResult,
+    Tool,
+    Resource,
+    BlobResourceContents,
+    TextResourceContents,
+)
 
 # ProxyStore imports
 from proxystore.connectors.redis import RedisKey, RedisConnector
@@ -64,7 +73,7 @@ class RheaMCPClient:
             RuntimeError: If the client session fails to initialize.
         """
         if not self.session:
-            raise RuntimeError("Client session could not initialize.")
+            raise RuntimeError("Client session could not be initialized.")
 
         res: CallToolResult = await self.session.call_tool(
             "find_tools", arguments={"query": query}
@@ -78,7 +87,7 @@ class RheaMCPClient:
 
     async def list_tools(self) -> list[Tool]:
         if not self.session:
-            raise RuntimeError("Client session could not initialize.")
+            raise RuntimeError("Client session could not be initialized.")
 
         res: ListToolsResult = await self.session.list_tools()
 
@@ -101,7 +110,7 @@ class RheaMCPClient:
         """
 
         if not self.session:
-            raise RuntimeError("Client session could not initialize.")
+            raise RuntimeError("Client session could not be initialized.")
 
         res: CallToolResult = await self.session.call_tool(name, arguments)
 
@@ -109,6 +118,34 @@ class RheaMCPClient:
             print(f"Error occured calling tool: {res.content}")
 
         return res.structuredContent
+
+    async def list_resources(self) -> list[Resource]:
+        """
+        List all available resources from the Rhea MCP server.
+        This asynchronous method retrieves a list of all resources accessible through
+        the initialized Rhea client. The client must have an active session before
+        calling this method.
+        Returns:
+            ListResourcesResult: A result object containing the list of available resources.
+        Raises:
+            RuntimeError: If the client session has not been initialized.
+        """
+        if not self.session:
+            raise RuntimeError("Client session could not be initialized.")
+
+        res: ListResourcesResult = await self.session.list_resources()
+
+        return res.resources
+
+    async def read_resource(
+        self, uri: AnyUrl
+    ) -> list[TextResourceContents | BlobResourceContents]:
+        if not self.session:
+            raise RuntimeError("Client session could not be initialized.")
+
+        res: ReadResourceResult = await self.session.read_resource(uri)
+
+        return res.contents
 
     async def close(self):
         """
