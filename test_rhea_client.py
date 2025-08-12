@@ -44,7 +44,7 @@ async def test_rhea_client(
     file_manager = RheaFileManager(store)
 
     # Initialize the MCP client
-    async with RheaMCPClient() as client:
+    async with RheaMCPClient(url=args.mcp_url) as client:
         print("\n--- 1. Finding tools for FASTA to FASTQ conversion ---")
         tool_list = await client.find_tools("I need a tool to convert FASTA to FASTQ")
 
@@ -114,6 +114,7 @@ if __name__ == "__main__":
         description="Test RheaClient with FASTA to FASTQ conversion"
     )
     parser.add_argument("fasta_path", help="Path to the FASTA file to convert")
+    parser.add_argument("--mcp-url", default="http://localhost:3001/mcp", help="URL of RheaMCP server")
     parser.add_argument(
         "--redis-host", default="localhost", help="Redis server hostname"
     )
