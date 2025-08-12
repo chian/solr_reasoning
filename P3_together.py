@@ -5,7 +5,6 @@ import json
 import re
 
 from agent_parser import sanitize_filename
-from query_state_manager import save_paused_query, list_active_queries, resume_query, get_job_results
 # MCP Client for communicating with BV-BRC MCP servers
 import subprocess
 import json
@@ -535,110 +534,10 @@ def parse_actions_from_response(response_text):
 # Main Execution
 
 def resume_paused_query(query_id: str):
-    """Resume a paused query from saved state"""
-    query_state = resume_query(query_id)
-    
-    if not query_state:
-        print(f"❌ Could not find or resume query {query_id}")
-        return
-    
-    print(f"📋 Loaded query state: {query_state['user_query'][:60]}...")
-    print(f"🔄 Resuming from action {query_state['action_index'] + 1}")
-    
-    # Get job results
-    job_id = query_state["job_info"]["job_id"]
-    job_results = query_state.get("job_results", "")
-    
-    if job_results:
-        print(f"✅ Job {job_id} completed, continuing with results")
-    else:
-        print(f"❌ No job results found for {job_id}")
-        return
-    
-    # Update the action that submitted the job with the results
-    actions = query_state["actions"]
-    action_index = query_state["action_index"]
-    
-    # Add job results to the action that was paused
-    if action_index < len(actions):
-        actions[action_index]["job_results"] = job_results
-    
-    # Continue processing from the next action
-    user_query = query_state["user_query"]
-    trace_file_path = query_state["trace_file_path"]
-    
-    # Write resume info to trace file
-    with open(trace_file_path, "a", encoding="utf-8") as f:
-        f.write(f"### Query Resumed\n")
-        f.write(f"Query ID: {query_id}\n")
-        f.write(f"Job ID: {job_id}\n")
-        f.write(f"Job Results: {job_results[:200]}...\n")
-        f.write(f"Resuming from action {action_index + 1}\n\n")
-    
-    print(f"📄 Continuing trace in: {trace_file_path}")
-    
-    # Continue processing from the next action
-    for next_action_index in range(action_index + 1, len(actions)):
-        action = actions[next_action_index]
-        
-        print(f"\n🔄 Executing resumed action {next_action_index + 1}: {action['tool_name']}")
-        
-        # Execute the action
-        result = execute_mcp_action(action)
-        observation_text = f"Action result: {result['observation']}"
-        
-        print(f"Action result: {observation_text}")
-        
-        # Write to trace file
-        with open(trace_file_path, "a", encoding="utf-8") as f:
-            f.write(f"### Resumed Action {next_action_index + 1} Execution\n")
-            f.write(f"Action: {json.dumps(action, indent=2)}\n")
-            f.write(f"Action result: {observation_text}\n")
-            f.write(f"Raw output: {result['raw_output']}\n")
-            f.write(f"Status: {result['status']}\n\n")
-        
-        # Handle job submissions (could pause again)
-        if result['status'] == 'job_submitted':
-            print(f"🔄 Another job submitted: {result['job_id']}")
-            print(f"⏸️  Pausing query again...")
-            
-            new_query_id = save_paused_query(
-                user_query=user_query,
-                actions=actions,
-                action_index=next_action_index,
-                job_info={
-                    'job_id': result['job_id'],
-                    'job_type': result['job_type'],
-                    'submitted_at': time.time()
-                },
-                trace_file_path=trace_file_path
-            )
-            
-            print(f"📋 Query re-paused as {new_query_id}")
-            return
-        
-        # Handle errors
-        if result['status'] == 'error':
-            print(f"❌ Action failed: {result['observation']}")
-            with open(trace_file_path, "a", encoding="utf-8") as f:
-                f.write(f"### Resumed Query Failed\n")
-                f.write(f"Action {next_action_index + 1} failed: {result['observation']}\n\n")
-            break
-    
-    print(f"✅ Resumed query completed successfully")
-    with open(trace_file_path, "a", encoding="utf-8") as f:
-        f.write(f"### Resumed Query Completed\n")
-        f.write(f"All resumed actions executed successfully.\n\n")
+    return
 
 def main():
     import sys
-    
-    # Check for resume argument
-    if len(sys.argv) > 2 and sys.argv[1] == "--resume":
-        query_id = sys.argv[2]
-        print(f"🔄 Resuming paused query: {query_id}")
-        resume_paused_query(query_id)
-        return
     
     # Check for single query argument
     if len(sys.argv) > 1 and sys.argv[1] != "--resume":
@@ -658,7 +557,6 @@ def main():
     except FileNotFoundError:
         print("Error: queries.json not found.")
         print("Usage: python P3_together.py 'your query here'")
-        print("   or: python P3_together.py --resume query_id")
         exit(1)
     except json.JSONDecodeError:
         print("Error: queries.json is not valid JSON. Please check the file format.")
@@ -775,43 +673,55 @@ def process_single_query(user_query: str):
             
             # Check if this action submitted a computational job
             if result['status'] == 'job_submitted':
-                print(f"🔄 Computational job submitted: {result['job_id']}")
-                print(f"⏸️  Pausing query to allow concurrent processing...")
+                job_id = result['job_id']
+                job_type = result['job_type']
+                print(f"🔄 Computational job submitted: {job_id} ({job_type})")
                 
-                # Save the current query state
-                query_id = save_paused_query(
-                    user_query=user_query,
-                    actions=actions, 
-                    action_index=action_index,
-                    job_info={
-                        'job_id': result['job_id'],
-                        'job_type': result['job_type'],
-                        'submitted_at': time.time()
-                    },
-                    trace_file_path=trace_file_path
-                )
-                
-                # Write pause info to trace file
+                # Write submission info to trace
                 with open(trace_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"### Query Paused for Job Processing\n")
-                    f.write(f"Job ID: {result['job_id']}\n")
-                    f.write(f"Job Type: {result['job_type']}\n")
-                    f.write(f"Query ID: {query_id}\n")
-                    f.write(f"Remaining actions: {len(actions) - action_index - 1}\n")
-                    f.write(f"Query will resume automatically when job completes.\n\n")
+                    f.write(f"### Job Submitted\n")
+                    f.write(f"Job ID: {job_id}\n")
+                    f.write(f"Job Type: {job_type}\n")
+                    f.write(f"Waiting for job to complete...\n\n")
                 
-                print(f"📋 Query saved as {query_id}")
-                print(f"🎯 You can submit new queries while this job runs in the background")
-                print(f"📊 {len(actions) - action_index - 1} actions remaining when job completes")
+                # Poll for completion synchronously
+                while True:
+                    status_result = computational_client.call_tool("p3_check_job_status", job_id=job_id)
+                    if isinstance(status_result, str):
+                        status_json = json.loads(status_result)
+                    else:
+                        status_json = status_result
+                    state = status_json.get("status")
+                    print(f"⏳ Job {job_id} status: {state}")
+                    if state in ["completed", "failed"]:
+                        break
+                    time.sleep(10)
                 
-                # Show active queries
-                active_queries = list_active_queries()
-                if active_queries:
-                    print(f"\n📋 Active paused queries:")
-                    for query_info in active_queries:
-                        print(f"   • {query_info}")
-                
-                return  # Exit this query processing
+                if state == "completed":
+                    job_results = computational_client.call_tool("p3_get_job_results", job_name=job_id)
+                    if isinstance(job_results, str):
+                        job_results_str = job_results
+                    else:
+                        job_results_str = str(job_results)
+                    
+                    # Record completion and results
+                    with open(trace_file_path, "a", encoding="utf-8") as f:
+                        f.write(f"### Job Completed\n")
+                        f.write(f"Job ID: {job_id}\n")
+                        f.write(f"Job Results: {job_results_str[:200]}...\n\n")
+                    
+                    # Attach results to the action for downstream steps
+                    actions[action_index]["job_results"] = job_results_str
+                    
+                    # Continue to next action
+                    continue
+                else:
+                    with open(trace_file_path, "a", encoding="utf-8") as f:
+                        f.write(f"### Job Failed\n")
+                        f.write(f"Job ID: {job_id}\n")
+                        f.write(f"Status: {json.dumps(status_json)}\n\n")
+                    print(f"❌ Job {job_id} failed")
+                    break
             
             # If the action failed, attempt to fix it with LLM
             if result['status'] == 'error':
