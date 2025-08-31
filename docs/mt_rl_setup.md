@@ -32,6 +32,18 @@ python external/Multi-Turn-RL-Agent/verifiers/tools/local_wiki_search.py
 ```
 
 5) Accelerate config (if needed):
+6) Prepare a JSONL dataset to drive outcome rewards (fields: prompt, answer):
+
+```json
+{"prompt": "Who discovered penicillin?", "answer": ["Alexander Fleming", "Fleming"]}
+{"prompt": "Capital of France?", "answer": "Paris"}
+```
+
+Run with:
+
+```bash
+DATASET_JSONL=path/to/data.jsonl MODEL_NAME="Qwen/Qwen2.5-7B" NUM_GPUS=1 ./scripts/run_mt_rl_jsonl.sh
+```
 
 ```bash
 accelerate config

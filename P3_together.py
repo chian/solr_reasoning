@@ -129,7 +129,7 @@ class BVBRCMCPClient:
 
 # Initialize MCP clients for different servers
 data_retrieval_client = BVBRCMCPClient("P3_TOOLS_DATA_RETRIEVAL.py")
-computational_client = BVBRCMCPClient("P3_TOOLS_COMPUTATIONAL.py")
+computational_client = BVBRCMCPClient("P3_TOOLS_COMPUTATIONAL_CLEAN.py")
 utilities_client = BVBRCMCPClient("P3_TOOLS_UTILITIES.py")
 rest_api_client = BVBRCMCPClient("BVBRC_API.py")
 
@@ -200,23 +200,14 @@ def execute_mcp_action(action_dict):
         "p3_get_family_data": data_retrieval_client,
         "p3_get_taxonomy_data": data_retrieval_client,
         
-        # Computational tools
-        "p3_submit_blast": computational_client,
-        "p3_submit_msa": computational_client,
-        "p3_submit_gene_tree": computational_client,
-        "p3_submit_codon_tree": computational_client,
-        "p3_submit_genome_annotation": computational_client,
-        "p3_submit_genome_assembly": computational_client,
-        "p3_submit_proteome_comparison": computational_client,
-        "p3_submit_variation_analysis": computational_client,
-        "p3_submit_rnaseq": computational_client,
-        "p3_submit_cga": computational_client,
-        "p3_submit_fastqutils": computational_client,
-        "p3_submit_taxonomic_classification": computational_client,
-        "p3_submit_metagenome_binning": computational_client,
-        "p3_submit_metagenomic_read_mapping": computational_client,
-        "p3_submit_sars2_analysis": computational_client,
-        "p3_submit_sars2_assembly": computational_client,
+        # Unified computational tool (replaces all individual p3-submit-* tools)
+        "p3_submit": computational_client,
+        
+        # App discovery tools
+        "p3_list_apps": computational_client,
+        "p3_get_app_info": computational_client,
+        
+        # Job monitoring tools (kept for compatibility)
         "p3_check_job_status": computational_client,
         "p3_get_job_results": computational_client,
         
@@ -249,21 +240,27 @@ def execute_mcp_action(action_dict):
         result = client.call_tool(tool_name, **params)
         
         # Check if this is a computational job submission
-        if tool_name.startswith("p3_submit_"):
+        if tool_name == "p3_submit":
             try:
                 if isinstance(result, str):
                     result_json = json.loads(result)
                 else:
                     result_json = result
                 
-                if "job_id" in result_json:
+                if result_json.get("submitted") and "job_id" in result_json:
                     # This is a job submission - return special status for pause handling
                     return {
-                        "observation": f"Job submitted successfully. Job ID: {result_json['job_id']}",
+                        "observation": f"Job submitted successfully. Job ID: {result_json['job_id']}. App: {result_json.get('app_label', result_json.get('app_id', 'Unknown'))}",
                         "raw_output": result,
                         "status": "job_submitted",
                         "job_id": result_json["job_id"],
-                        "job_type": tool_name
+                        "job_type": f"p3_submit_{result_json.get('app_id', 'unknown')}"
+                    }
+                elif not result_json.get("submitted"):
+                    return {
+                        "observation": f"Job submission failed: {result_json.get('error', 'Unknown error')}",
+                        "raw_output": result,
+                        "status": "error"
                     }
             except (json.JSONDecodeError, TypeError):
                 # If parsing fails, continue with normal processing
@@ -495,7 +492,7 @@ def update_commands_with_llm(user_query, original_actions, action_index, observa
     return True, updated_actions, "Future actions updated based on execution result"
 
 def parse_actions_from_response(response_text):
-    """Extract and parse action JSON from LLM response"""
+    """Extract and parse action JSON from LLM response - supports multiple function calling formats"""
     # First, remove all content within <think></think> tags to avoid parsing actions from reasoning
     think_pattern = re.compile(r'<think>.*?</think>', re.DOTALL | re.IGNORECASE)
     cleaned_response = think_pattern.sub('', response_text)
@@ -516,19 +513,63 @@ def parse_actions_from_response(response_text):
         
         try:
             action_json = json.loads(cleaned_block.strip())
-            if isinstance(action_json, dict) and "tool_name" in action_json and "parameters" in action_json:
-                actions.append(action_json)
+            normalized_action = normalize_function_call_format(action_json)
+            if normalized_action:
+                actions.append(normalized_action)
             elif isinstance(action_json, list):
                 # Handle arrays of actions
                 for action in action_json:
-                    if isinstance(action, dict) and "tool_name" in action and "parameters" in action:
-                        actions.append(action)
+                    normalized_action = normalize_function_call_format(action)
+                    if normalized_action:
+                        actions.append(normalized_action)
         except json.JSONDecodeError as e:
             print(f"JSON parsing error: {e}")
             print(f"Cleaned block: {cleaned_block}")
             continue
     
     return actions, f"Found {len(actions)} valid actions"
+
+def normalize_function_call_format(action_dict):
+    """Normalize different function calling formats to MCP format"""
+    if not isinstance(action_dict, dict):
+        return None
+    
+    # MCP format (current standard)
+    if "tool_name" in action_dict and "parameters" in action_dict:
+        return action_dict
+    
+    # OpenAI/Anthropic format
+    if "name" in action_dict and "arguments" in action_dict:
+        return {
+            "tool_name": action_dict["name"],
+            "parameters": action_dict["arguments"]
+        }
+    
+    # Google Gemini format
+    if "name" in action_dict and "args" in action_dict:
+        return {
+            "tool_name": action_dict["name"],
+            "parameters": action_dict["args"]
+        }
+    
+    # Handle malformed keys (like the "tool "tool_name" issue)
+    # Look for any key that contains "tool_name" or "name"
+    tool_name = None
+    parameters = None
+    
+    for key, value in action_dict.items():
+        if "tool_name" in key.lower() or "name" in key.lower():
+            tool_name = value
+        elif "parameters" in key.lower() or "arguments" in key.lower() or "args" in key.lower():
+            parameters = value
+    
+    if tool_name and parameters:
+        return {
+            "tool_name": tool_name,
+            "parameters": parameters
+        }
+    
+    return None
 
 #----------------------------------
 # Main Execution

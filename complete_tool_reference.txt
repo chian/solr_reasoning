@@ -97,374 +97,484 @@ DATA RETRIEVAL TOOLS:
    - Example: {"genome_ids": ["83333.111"]}
 
 COMPUTATIONAL TOOLS:
-20. p3_submit_blast
-   - Parameters: query_sequences (complex), output_path (str), output_name (str), program (str, default='blastp'), database (str, default='nr'), evalue (float, default=0.001), max_target_seqs (int, default=100), additional_params (complex, optional)
-   - Description: Submit BLAST similarity search job
-   - Example: {"query_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+20. p3_submit
+   - Parameters: app_id (str), output_path (str), output_name (str), parameters (dict), input_files (list, optional), workspace (str, optional), additional_options (dict, optional)
+   - Description: Unified tool for submitting jobs to all BV-BRC computational services. Replaces all individual p3-submit-* tools.
+   - Example: {"app_id": "BLAST", "output_path": "/user/results", "output_name": "blast_job", "parameters": {"program": "blastp", "database": "nr"}, "input_files": ["/path/to/query.fasta"]}
 
-21. p3_submit_msa
-   - Parameters: sequences (complex), output_path (str), output_name (str), alignment_method (str, default='muscle'), additional_params (complex, optional)
-   - Description: Submit Multiple Sequence Alignment job
-   - Example: {"sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+21. p3_list_apps
+   - Parameters: None
+   - Description: List all available computational apps with descriptions, categorized by analysis type
+   - Example: {}
 
-22. p3_submit_gene_tree
-   - Parameters: gene_sequences (complex), output_path (str), output_name (str), tree_method (str, default='FastTree'), alignment_method (str, default='muscle'), additional_params (complex, optional)
-   - Description: Submit gene phylogenetic tree construction job
-   - Example: {"gene_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
+22. p3_get_app_info
+   - Parameters: app_id (str)
+   - Description: Get detailed information about a specific app including parameter schema and example usage
+   - Example: {"app_id": "BLAST"}
 
-23. p3_submit_codon_tree
-   - Parameters: gene_sequences (complex), output_path (str), output_name (str), codon_position (str, default='123'), tree_method (str, default='FastTree'), additional_params (complex, optional)
-   - Description: Submit codon-based phylogenetic tree job
-   - Example: {"gene_sequences": "MKTVRQERLK...", "output_path": "example_value", "output_name": "example_value"}
-
-24. p3_submit_genome_annotation
-   - Parameters: contigs_file (str), output_path (str), output_name (str), domain (str, default='Bacteria'), taxonomy_id (int, optional, optional), annotation_scheme (str, default='RAST'), additional_params (complex, optional)
-   - Description: Submit genome annotation job using RAST
-   - Example: {"contigs_file": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-25. p3_submit_genome_assembly
-   - Parameters: reads_files (list), output_path (str), output_name (str), assembly_strategy (str, default='auto'), recipe (str, default='unicycler'), additional_params (complex, optional)
-   - Description: Submit genome assembly job
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-26. p3_submit_proteome_comparison
-   - Parameters: genome_ids (list), output_path (str), output_name (str), comparison_type (str, default='bidirectional'), evalue_cutoff (float, default=1e-05), additional_params (complex, optional)
-   - Description: Submit proteome comparison job (bidirectional BLAST)
-   - Example: {"genome_ids": ["83333.111"], "output_path": "example_value", "output_name": "example_value"}
-
-27. p3_submit_variation_analysis
-   - Parameters: reads_files (list), reference_genome (str), output_path (str), output_name (str), mapper (str, default='bwa'), caller (str, default='gatk'), additional_params (complex, optional)
-   - Description: Submit variation analysis job (SNP/variant calling)
-   - Example: {"reads_files": "example_value", "reference_genome": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-28. p3_submit_rnaseq
-   - Parameters: reads_files (list), reference_genome (str), output_path (str), output_name (str), analysis_type (str, default='differential'), mapper (str, default='hisat2'), additional_params (complex, optional)
-   - Description: Submit RNA-Seq analysis job
-   - Example: {"reads_files": "example_value", "reference_genome": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-29. p3_submit_cga
-   - Parameters: reads_files (list), output_path (str), output_name (str), recipe (str, default='comprehensive'), reference_genome (str, optional, optional), additional_params (complex, optional)
-   - Description: Submit Comprehensive Genome Analysis (CGA) job
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-30. p3_submit_fastqutils
-   - Parameters: reads_files (list), output_path (str), output_name (str), operation (str, default='trim'), quality_threshold (int, default=20), additional_params (complex, optional)
-   - Description: Submit FASTQ utility operations job (trimming, filtering, etc.)
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-31. p3_submit_taxonomic_classification
-   - Parameters: reads_files (list), output_path (str), output_name (str), classifier (str, default='kraken2'), database (str, default='standard'), additional_params (complex, optional)
-   - Description: Submit taxonomic classification job
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-32. p3_submit_metagenome_binning
-   - Parameters: contigs_file (str), reads_files (list), output_path (str), output_name (str), binning_method (str, default='metabat2'), additional_params (complex, optional)
-   - Description: Submit metagenome binning job
-   - Example: {"contigs_file": "example_value", "reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-33. p3_submit_metagenomic_read_mapping
-   - Parameters: reads_files (list), reference_genomes (list), output_path (str), output_name (str), mapper (str, default='bwa'), additional_params (complex, optional)
-   - Description: Submit metagenomic read mapping job
-   - Example: {"reads_files": "example_value", "reference_genomes": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-34. p3_submit_sars2_analysis
-   - Parameters: reads_files (list), output_path (str), output_name (str), analysis_type (str, default='comprehensive'), reference_genome (str, default='NC_045512.2'), additional_params (complex, optional)
-   - Description: Submit SARS-CoV-2 specialized analysis job
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-35. p3_submit_sars2_assembly
-   - Parameters: reads_files (list), output_path (str), output_name (str), assembly_strategy (str, default='consensus'), reference_genome (str, default='NC_045512.2'), additional_params (complex, optional)
-   - Description: Submit SARS-CoV-2 specialized assembly job
-   - Example: {"reads_files": "example_value", "output_path": "example_value", "output_name": "example_value"}
-
-36. p3_monitor_job
-   - Parameters: job_id (str), poll_interval (int, default=30), max_wait_time (int, default=3600)
-   - Description: Monitor a computational job until completion or timeout
-   - Example: {"job_id": "example_value"}
-
-37. p3_check_job_status
+23. p3_check_job_status
    - Parameters: job_id (str)
    - Description: Check current status of a computational job
-   - Example: {"job_id": "example_value"}
+   - Example: {"job_id": "job_12345"}
 
-38. p3_get_job_results
-   - Parameters: job_name (str), result_type (str, default='summary')
+24. p3_get_job_results
+   - Parameters: job_name (str)
    - Description: Retrieve and parse computational job results
-   - Example: {"job_name": "example_value"}
+   - Example: {"job_name": "job_12345"}
+
+COMPREHENSIVE P3_SUBMIT APP REFERENCE:
+
+SEQUENCE ANALYSIS APPS:
+
+BLAST (Basic Local Alignment Search Tool):
+- app_id: "BLAST"
+- Description: Perform sequence similarity searches against databases
+- Required Parameters: {"program": "blastp|blastn|blastx|tblastn|tblastx", "database": "nr|nt|refseq_protein|refseq_nucleotide"}
+- Optional Parameters: {"evalue": float (default: 1e-5), "max_target_seqs": int (default: 100), "min_coverage": float, "in_type": "dna|aa", "db_type": "fna|ffn|frn|faa"}
+- Input Files: FASTA file with query sequences
+- Example: {"app_id": "BLAST", "output_path": "/user/results", "output_name": "protein_blast", "parameters": {"program": "blastp", "database": "nr", "evalue": 1e-5, "max_target_seqs": 100}, "input_files": ["/path/to/proteins.fasta"]}
+
+MSA (Multiple Sequence Alignment):
+- app_id: "MSA"
+- Description: Align multiple sequences using various algorithms
+- Required Parameters: {"alignment_method": "muscle|clustalw|mafft"}
+- Optional Parameters: {"gap_open": float, "gap_extend": float}
+- Input Files: FASTA file with sequences to align
+- Example: {"app_id": "MSA", "output_path": "/user/alignment", "output_name": "gene_alignment", "parameters": {"alignment_method": "muscle"}, "input_files": ["/path/to/sequences.fasta"]}
+
+PHYLOGENETIC ANALYSIS APPS:
+
+Gene Tree Construction:
+- app_id: "gene-tree"
+- Description: Build phylogenetic trees from gene sequences
+- Required Parameters: {"method": "phyml|raxml|fasttree"}
+- Optional Parameters: {"substitution_model": "JTT|WAG|LG", "bootstrap": int}
+- Input Files: FASTA file with gene sequences
+- Example: {"app_id": "gene-tree", "output_path": "/user/phylogeny", "output_name": "phylogenetic_tree", "parameters": {"method": "phyml", "substitution_model": "JTT"}, "input_files": ["/path/to/genes.fasta"]}
+
+Codon Tree Construction:
+- app_id: "codon-tree"
+- Description: Build phylogenetic trees using codon-based methods
+- Required Parameters: {"method": "phyml|raxml"}
+- Optional Parameters: {"codon_position": "123|1|2|3", "substitution_model": "GY94|M0"}
+- Input Files: FASTA file with coding sequences
+- Example: {"app_id": "codon-tree", "output_path": "/user/codon_trees", "output_name": "codon_phylogeny", "parameters": {"method": "phyml", "codon_position": "123"}, "input_files": ["/path/to/coding_sequences.fasta"]}
+
+GENOME ANALYSIS APPS:
+
+Genome Assembly:
+- app_id: "genome-assembly"
+- Description: Assemble genomes from sequencing reads
+- Required Parameters: {"assembly_strategy": "auto|denovo|reference"}
+- Optional Parameters: {"recipe": "unicycler|spades|velvet", "kmer_size": int, "coverage_cutoff": int}
+- Input Files: FASTQ files with sequencing reads (paired-end or single-end)
+- Example: {"app_id": "genome-assembly", "output_path": "/user/assembly", "output_name": "ecoli_assembly", "parameters": {"assembly_strategy": "auto", "recipe": "unicycler"}, "input_files": ["/path/to/reads_1.fastq", "/path/to/reads_2.fastq"]}
+
+Genome Annotation:
+- app_id: "genome-annotation"
+- Description: Annotate assembled genomes with genes and features
+- Required Parameters: {"contigs_file": str}
+- Optional Parameters: {"recipe": "rast|prokka", "domain": "Bacteria|Archaea", "taxonomy_id": int}
+- Input Files: FASTA file with assembled contigs
+- Example: {"app_id": "genome-annotation", "output_path": "/user/annotation", "output_name": "genome_annotation", "parameters": {"recipe": "rast", "domain": "Bacteria"}, "input_files": ["/path/to/contigs.fasta"]}
+
+COMPARATIVE ANALYSIS APPS:
+
+Proteome Comparison:
+- app_id: "proteome-comparison"
+- Description: Compare proteomes between genomes using bidirectional BLAST
+- Required Parameters: {"comparison_type": "bidirectional|all-vs-all"}
+- Optional Parameters: {"evalue_cutoff": float (default: 1e-5), "genome_file": str}
+- Input Files: File with genome IDs or genome files
+- Example: {"app_id": "proteome-comparison", "output_path": "/user/comparison", "output_name": "proteome_analysis", "parameters": {"comparison_type": "bidirectional", "evalue_cutoff": 1e-5}, "input_files": ["/path/to/genome_list.txt"]}
+
+Variation Analysis:
+- app_id: "variation-analysis"
+- Description: Identify genetic variations (SNPs, indels) in sequencing data
+- Required Parameters: {"reference_genome": str}
+- Optional Parameters: {"mapper": "bwa|bowtie2", "caller": "gatk|freebayes", "min_coverage": int}
+- Input Files: FASTQ files with sequencing reads
+- Example: {"app_id": "variation-analysis", "output_path": "/user/variations", "output_name": "snp_analysis", "parameters": {"reference_genome": "83333.111", "mapper": "bwa", "caller": "gatk"}, "input_files": ["/path/to/reads_1.fastq", "/path/to/reads_2.fastq"]}
+
+TRANSCRIPTOMICS APPS:
+
+RNA-Seq Analysis:
+- app_id: "rnaseq"
+- Description: Analyze RNA sequencing data for gene expression and differential expression
+- Required Parameters: {"reference_genome": str}
+- Optional Parameters: {"analysis_type": "differential|quantification", "mapper": "hisat2|star", "differential_method": "deseq2|edgeR"}
+- Input Files: FASTQ files with RNA-seq reads (multiple samples for differential analysis)
+- Example: {"app_id": "rnaseq", "output_path": "/user/rnaseq", "output_name": "expression_analysis", "parameters": {"reference_genome": "83333.111", "analysis_type": "differential", "mapper": "hisat2"}, "input_files": ["/path/to/control_1.fastq", "/path/to/control_2.fastq", "/path/to/treatment_1.fastq", "/path/to/treatment_2.fastq"]}
+
+Comprehensive Genome Analysis (CGA):
+- app_id: "CGA"
+- Description: Comprehensive analysis combining assembly, annotation, and comparative genomics
+- Required Parameters: {"recipe": "comprehensive|minimal"}
+- Optional Parameters: {"reference_genome": str, "annotation_scheme": "rast|prokka"}
+- Input Files: FASTQ files with sequencing reads
+- Example: {"app_id": "CGA", "output_path": "/user/cga", "output_name": "comprehensive_analysis", "parameters": {"recipe": "comprehensive"}, "input_files": ["/path/to/reads_1.fastq", "/path/to/reads_2.fastq"]}
+
+METAGENOMIC ANALYSIS APPS:
+
+Taxonomic Classification:
+- app_id: "taxonomic-classification"
+- Description: Classify metagenomic reads taxonomically
+- Required Parameters: {"method": "kraken2|metaphlan|centrifuge"}
+- Optional Parameters: {"database": "standard|pluspf|minikraken", "confidence_threshold": float}
+- Input Files: FASTQ files with metagenomic reads
+- Example: {"app_id": "taxonomic-classification", "output_path": "/user/taxonomy", "output_name": "metagenome_classification", "parameters": {"method": "kraken2", "database": "standard"}, "input_files": ["/path/to/metagenome.fastq"]}
+
+Metagenome Binning:
+- app_id: "metagenome-binning"
+- Description: Bin metagenomic contigs into draft genomes
+- Required Parameters: {"method": "metabat2|concoct|maxbin"}
+- Optional Parameters: {"min_contig_length": int (default: 1000), "min_bin_size": int}
+- Input Files: FASTA file with assembled contigs, FASTQ files with reads
+- Example: {"app_id": "metagenome-binning", "output_path": "/user/binning", "output_name": "metagenome_bins", "parameters": {"method": "metabat2", "min_contig_length": 2000}, "input_files": ["/path/to/contigs.fasta", "/path/to/reads_1.fastq", "/path/to/reads_2.fastq"]}
+
+Metagenomic Read Mapping:
+- app_id: "metagenomic-read-mapping"
+- Description: Map metagenomic reads to reference genomes
+- Required Parameters: {"reference_genome": str}
+- Optional Parameters: {"mapper": "bowtie2|bwa", "min_identity": float}
+- Input Files: FASTQ files with metagenomic reads
+- Example: {"app_id": "metagenomic-read-mapping", "output_path": "/user/mapping", "output_name": "read_mapping", "parameters": {"reference_genome": "83333.111", "mapper": "bowtie2"}, "input_files": ["/path/to/metagenome.fastq"]}
+
+SPECIALIZED ANALYSIS APPS:
+
+SARS-CoV-2 Analysis:
+- app_id: "sars2-analysis"
+- Description: Specialized analysis for SARS-CoV-2 sequencing data
+- Required Parameters: {"analysis_type": "comprehensive|consensus|variants"}
+- Optional Parameters: {"reference_genome": str (default: "NC_045512.2"), "variant_caller": "ivar|lofreq"}
+- Input Files: FASTQ files with SARS-CoV-2 sequencing reads
+- Example: {"app_id": "sars2-analysis", "output_path": "/user/sars2", "output_name": "covid_analysis", "parameters": {"analysis_type": "comprehensive", "reference_genome": "NC_045512.2"}, "input_files": ["/path/to/covid_reads.fastq"]}
+
+SARS-CoV-2 Assembly:
+- app_id: "sars2-assembly"
+- Description: Specialized assembly for SARS-CoV-2 genomes
+- Required Parameters: {"assembly_strategy": "consensus|denovo"}
+- Optional Parameters: {"reference_genome": str (default: "NC_045512.2"), "consensus_method": "ivar|bcftools"}
+- Input Files: FASTQ files with SARS-CoV-2 sequencing reads
+- Example: {"app_id": "sars2-assembly", "output_path": "/user/sars2_assembly", "output_name": "covid_assembly", "parameters": {"assembly_strategy": "consensus"}, "input_files": ["/path/to/covid_reads.fastq"]}
+
+Wastewater Analysis:
+- app_id: "wastewater-analysis"
+- Description: Analyze wastewater sequencing data for pathogen detection
+- Required Parameters: {"analysis_type": "pathogen_detection|quantification"}
+- Optional Parameters: {"reference_genome": str, "detection_threshold": float}
+- Input Files: FASTQ files with wastewater sequencing reads
+- Example: {"app_id": "wastewater-analysis", "output_path": "/user/wastewater", "output_name": "wastewater_analysis", "parameters": {"analysis_type": "pathogen_detection"}, "input_files": ["/path/to/wastewater.fastq"]}
+
+Viral Assembly:
+- app_id: "viral-assembly"
+- Description: Assemble viral genomes from sequencing data
+- Required Parameters: {"assembly_strategy": "denovo|reference"}
+- Optional Parameters: {"reference_genome": str, "assembly_tool": "spades|velvet"}
+- Input Files: FASTQ files with viral sequencing reads
+- Example: {"app_id": "viral-assembly", "output_path": "/user/viral", "output_name": "viral_assembly", "parameters": {"assembly_strategy": "denovo"}, "input_files": ["/path/to/viral_reads.fastq"]}
+
+Subspecies Classification:
+- app_id: "SubspeciesClassification"
+- Description: Classify bacterial subspecies using genomic data
+- Required Parameters: {"method": "mash|sourmash"}
+- Optional Parameters: {"reference_database": str, "similarity_threshold": float}
+- Input Files: FASTA files with genome sequences
+- Example: {"app_id": "SubspeciesClassification", "output_path": "/user/subspecies", "output_name": "subspecies_classification", "parameters": {"method": "mash"}, "input_files": ["/path/to/genomes.fasta"]}
+
+Comparative Systems:
+- app_id: "comparative-systems"
+- Description: Compare metabolic and functional systems across genomes
+- Required Parameters: {"analysis_type": "metabolic|functional"}
+- Optional Parameters: {"reference_genome": str, "comparison_method": "bidirectional|all-vs-all"}
+- Input Files: Genome files or genome IDs
+- Example: {"app_id": "comparative-systems", "output_path": "/user/systems", "output_name": "systems_comparison", "parameters": {"analysis_type": "metabolic"}, "input_files": ["/path/to/genome_list.txt"]}
+
+UTILITY APPS:
+
+FASTQ Utilities:
+- app_id: "fastqutils"
+- Description: Process and manipulate FASTQ files
+- Required Parameters: {"operation": "trim|filter|convert|stats"}
+- Optional Parameters: {"quality_threshold": int (default: 20), "min_length": int, "adapter_sequence": str}
+- Input Files: FASTQ files to process
+- Example: {"app_id": "fastqutils", "output_path": "/user/fastq", "output_name": "quality_trim", "parameters": {"operation": "trim", "quality_threshold": 20}, "input_files": ["/path/to/reads.fastq"]}
+
+USAGE NOTES:
+- Use p3_list_apps() to discover available apps and their descriptions
+- Use p3_get_app_info(app_id) to get detailed parameter information for a specific app
+- All apps support automatic file upload from local paths to workspace
+- Job monitoring can be done with p3_check_job_status() and p3_get_job_results()
+- Input files can be local paths (will be uploaded) or workspace paths (already uploaded)
 
 UTILITY TOOLS:
-39. p3_login
+25. p3_login
    - Parameters: username (str, optional, optional), password (str, optional, optional)
    - Description: Authenticate with BV-BRC using p3-login
    - Example: {}
 
-40. p3_logout
+26. p3_logout
    - Parameters: {} (no parameters)
    - Description: End BV-BRC authentication session
    - Example: {}
 
-41. p3_whoami
+27. p3_whoami
    - Parameters: {} (no parameters)
    - Description: Check current BV-BRC authentication status
    - Example: {}
 
-42. p3_ls
+28. p3_ls
    - Parameters: path (str, default='/rbutler@bvbrc/home'), long_format (bool, default=False), recursive (bool, default=False)
    - Description: List workspace files using p3-ls
    - Example: {}
 
-43. p3_cp_to_workspace
+29. p3_cp_to_workspace
    - Parameters: local_path (str), workspace_path (str)
    - Description: Copy local file to workspace
    - Example: {"local_path": "example_value", "workspace_path": "example_value"}
 
-44. p3_cp_from_workspace
+30. p3_cp_from_workspace
    - Parameters: workspace_path (str), local_path (str)
    - Description: Copy workspace file to local system
    - Example: {"workspace_path": "example_value", "local_path": "example_value"}
 
-45. p3_cp_within_workspace
+31. p3_cp_within_workspace
    - Parameters: source_path (str), dest_path (str)
    - Description: Copy file within workspace
    - Example: {"source_path": "example_value", "dest_path": "example_value"}
 
-46. p3_rm
+32. p3_rm
    - Parameters: workspace_path (str), recursive (bool, default=False), force (bool, default=False)
    - Description: Remove workspace files or directories
    - Example: {"workspace_path": "example_value"}
 
-47. p3_cat
+33. p3_cat
    - Parameters: workspace_path (str), max_lines (int, optional, optional)
    - Description: Display workspace file contents
    - Example: {"workspace_path": "example_value"}
 
-48. p3_count_simple
+34. p3_count_simple
    - Parameters: input_data (str)
    - Description: Count lines/records in input data (simple implementation)
    - Example: {"input_data": "example_value"}
 
-49. p3_extract_columns_simple
+35. p3_extract_columns_simple
    - Parameters: input_data (str), columns (list)
    - Description: Extract specific columns from tabular data (simple implementation)
    - Example: {"input_data": "example_value", "columns": "example_value"}
 
-50. p3_check_job_status
-   - Parameters: job_id (str)
-   - Description: Check current status of a computational job
-   - Example: {"job_id": "example_value"}
-
-51. p3_mkdir
+36. p3_mkdir
    - Parameters: workspace_path (str), parents (bool, default=True)
    - Description: Create workspace directory (if p3-mkdir exists)
    - Example: {"workspace_path": "example_value"}
 
-52. p3_extract
+37. p3_extract
    - Parameters: input_data (str), extract_pattern (str), output_format (str, default='tsv')
    - Description: Extract data using p3-extract (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value", "extract_pattern": "example_value"}
 
-53. p3_collate
+38. p3_collate
    - Parameters: input_files (list), collation_key (str, optional, optional), output_format (str, default='tsv')
    - Description: Collate data from multiple sources (NOT YET IMPLEMENTED)
    - Example: {"input_files": "example_value"}
 
-54. p3_format_results
+39. p3_format_results
    - Parameters: input_data (str), output_format (str, default='table'), headers (complex, optional), delimiter (str, default='	')
    - Description: Format P3-Tools results for display (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value", "delimiter": 10}
 
-55. p3_aggregates_to_html
+40. p3_aggregates_to_html
    - Parameters: input_data (str), title (str, default='P3-Tools Results'), template (str, optional, optional)
    - Description: Convert aggregate results to HTML (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value"}
 
-56. p3_head
+41. p3_head
    - Parameters: input_data (str), lines (int, default=10)
    - Description: Display first N lines of data (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value"}
 
-57. p3_tail
+42. p3_tail
    - Parameters: input_data (str), lines (int, default=10)
    - Description: Display last N lines of data (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value"}
 
-58. p3_sort
+43. p3_sort
    - Parameters: input_data (str), columns (complex, optional), unique (bool, default=False), reverse (bool, default=False)
    - Description: Sort tabular data by specified columns (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value"}
 
-59. p3_join
+44. p3_join
    - Parameters: left_data (str), right_data (str), join_column (str), join_type (str, default='inner')
    - Description: Join two data tables on specified column (NOT YET IMPLEMENTED)
    - Example: {"left_data": "example_value", "right_data": "example_value", "join_column": "example_value"}
 
-60. p3_pivot
+45. p3_pivot
    - Parameters: input_data (str), index_column (str), value_column (str), pivot_column (str)
    - Description: Create pivot table from data (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value", "index_column": "example_value", "value_column": "example_value", "pivot_column": "example_value"}
 
-61. p3_tbl_to_fasta
+46. p3_tbl_to_fasta
    - Parameters: input_data (str), sequence_column (str), id_column (str, optional, optional), description_column (str, optional, optional)
    - Description: Convert tabular data to FASTA format (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value", "sequence_column": "MKTVRQERLK..."}
 
-62. p3_tbl_to_html
+47. p3_tbl_to_html
    - Parameters: input_data (str), title (str, default='P3-Tools Results'), styling (str, default='basic')
    - Description: Convert tabular data to HTML table (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value"}
 
-63. p3_stats
+48. p3_stats
    - Parameters: input_data (str), stat_column (str), group_column (str, optional, optional)
    - Description: Calculate statistics for numeric columns (NOT YET IMPLEMENTED)
    - Example: {"input_data": "example_value", "stat_column": "example_value"}
 
-64. p3_qstat
+49. p3_qstat
    - Parameters: detailed (bool, default=False)
    - Description: Query P3-Tools system status and job queue (NOT YET IMPLEMENTED)
    - Example: {}
 
-65. batch_file_upload
+50. batch_file_upload
    - Parameters: local_files (list), workspace_dir (str)
    - Description: Upload multiple files to workspace directory
    - Example: {"local_files": "example_value", "workspace_dir": "example_value"}
 
-66. batch_file_download
+51. batch_file_download
    - Parameters: workspace_dir (str), local_dir (str), file_patterns (complex, optional)
    - Description: Download multiple files from workspace directory
    - Example: {"workspace_dir": "example_value", "local_dir": "example_value"}
 
-67. workspace_cleanup
+52. workspace_cleanup
    - Parameters: workspace_dir (str), keep_patterns (complex, optional), dry_run (bool, default=True)
    - Description: Clean up workspace directory by removing files (with safety dry-run default)
    - Example: {"workspace_dir": "example_value"}
 
 REST API TOOLS:
-68. get_genomes_by_species
+53. get_genomes_by_species
    - Parameters: species (str), limit (int, default=50), offset (int, default=0)
    - Description: Get genomes for a specific species
    - Example: {"species": "Escherichia coli", "limit": 10}
 
-69. get_complete_genomes
+54. get_complete_genomes
    - Parameters: species (str), limit (int, default=20), offset (int, default=0)
    - Description: Get only complete genomes for a species
    - Example: {"species": "Escherichia coli", "limit": 10}
 
-70. get_genomes_by_ids
+55. get_genomes_by_ids
    - Parameters: genome_ids (list)
    - Description: Get specific genomes by their IDs
    - Example: {"genome_ids": ["83333.111"]}
 
-71. find_similar_genomes
+56. find_similar_genomes
    - Parameters: target_species (str), target_strain (str, optional, optional), min_genome_length (int, optional, optional)
    - Description: Find genomes similar to target criteria
    - Example: {"target_species": "Escherichia coli"}
 
-72. genome_feature_summary
+57. genome_feature_summary
    - Parameters: genome_id (str)
    - Description: Generate comprehensive feature summary for a genome
    - Example: {"genome_id": "83333.111"}
 
-73. get_genes_by_name
+58. get_genes_by_name
    - Parameters: gene_name (str), genome_ids (complex, optional), limit (int, default=100), offset (int, default=0)
    - Description: Find genes by name across genomes
    - Example: {"gene_name": "example_value", "genome_ids": "83333.111", "limit": 10}
 
-74. get_cds_features
+59. get_cds_features
    - Parameters: genome_id (str), limit (int, default=1000), offset (int, default=0)
    - Description: Get all CDS features for a genome
    - Example: {"genome_id": "83333.111", "limit": 10}
 
-75. search_genes_by_product
+60. search_genes_by_product
    - Parameters: product_keyword (str), genome_ids (complex, optional), limit (int, default=100), offset (int, default=0)
    - Description: Search genes by product description
    - Example: {"product_keyword": "example_value", "genome_ids": "83333.111", "limit": 10}
 
-76. analyze_gene_across_genomes
+61. analyze_gene_across_genomes
    - Parameters: gene_name (str), species (str), max_genomes (int, default=50)
    - Description: Analyze a specific gene across multiple genomes
    - Example: {"gene_name": "example_value", "species": "Escherichia coli"}
 
-77. get_protein_domains
+62. get_protein_domains
    - Parameters: patric_id (str)
    - Description: Get all protein domains for a specific gene
    - Example: {"patric_id": "example_value"}
 
-78. find_proteins_with_domain
+63. find_proteins_with_domain
    - Parameters: domain_description (str), limit (int, default=100), offset (int, default=0)
    - Description: Find proteins containing a specific domain
    - Example: {"domain_description": "example_value", "limit": 10}
 
-79. get_genome_sequence
+64. get_genome_sequence
    - Parameters: genome_id (str)
    - Description: Get complete genome sequence
    - Example: {"genome_id": "83333.111"}
 
-80. extract_gene_sequence
+65. extract_gene_sequence
    - Parameters: genome_id (str), start (int), end (int), strand (str)
    - Description: Extract gene sequence using coordinates
    - Example: {"genome_id": "83333.111", "start": 100, "end": 100, "strand": "example_value"}
 
-81. get_taxonomy_info
+66. get_taxonomy_info
    - Parameters: taxon_id (str, optional, optional), taxon_name (str, optional, optional)
    - Description: Retrieve taxonomic information by ID or name
    - Example: {}
 
-82. get_lineage_for_organism
+67. get_lineage_for_organism
    - Parameters: organism_name (str)
    - Description: Get complete taxonomic lineage for an organism
    - Example: {"organism_name": "example_value"}
 
-83. get_subsystems_for_genome
+68. get_subsystems_for_genome
    - Parameters: genome_id (str)
    - Description: Get all subsystems present in a genome
    - Example: {"genome_id": "83333.111"}
 
-84. find_genomes_with_subsystem
+69. find_genomes_with_subsystem
    - Parameters: subsystem_name (str), limit (int, default=50), offset (int, default=0)
    - Description: Find genomes containing a specific subsystem
    - Example: {"subsystem_name": "example_value", "limit": 10}
 
-85. get_pathways_for_genome
+70. get_pathways_for_genome
    - Parameters: genome_name (str)
    - Description: Get all pathways present in a genome
    - Example: {"genome_name": "example_value"}
 
-86. find_genomes_with_pathway
+71. find_genomes_with_pathway
    - Parameters: pathway_name (str), limit (int, default=50), offset (int, default=0)
    - Description: Find genomes containing a specific pathway
    - Example: {"pathway_name": "example_value", "limit": 10}
 
-87. get_antibiotic_resistance_genes
+72. get_antibiotic_resistance_genes
    - Parameters: genome_id (str)
    - Description: Get antibiotic resistance genes for a genome
    - Example: {"genome_id": "83333.111"}
 
-88. find_genes_for_antibiotic
+73. find_genes_for_antibiotic
    - Parameters: antibiotic_name (str), limit (int, default=50), offset (int, default=0)
    - Description: Find genes associated with resistance to specific antibiotic
    - Example: {"antibiotic_name": "example_value", "limit": 10}
 
-89. get_virulence_factors
+74. get_virulence_factors
    - Parameters: genome_id (str)
    - Description: Get virulence factor genes for a genome
    - Example: {"genome_id": "83333.111"}
 
-90. get_amr_profile
+75. get_amr_profile
    - Parameters: genome_id (str)
    - Description: Get complete AMR profile for a genome
    - Example: {"genome_id": "83333.111"}
 
-91. compare_amr_methods
+76. compare_amr_methods
    - Parameters: limit (int, default=1000), offset (int, default=0)
    - Description: Compare performance of different AMR prediction methods
    - Example: {"limit": 10}
 
-92. comprehensive_genome_analysis
+77. comprehensive_genome_analysis
    - Parameters: genome_id (str)
    - Description: Complete analysis combining multiple endpoints
    - Example: {"genome_id": "83333.111"}
 
-93. functional_comparison
+78. functional_comparison
    - Parameters: genome_ids (list)
    - Description: Compare functional profiles across multiple genomes
    - Example: {"genome_ids": ["83333.111"]}

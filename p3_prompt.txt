@@ -15,7 +15,6 @@ CRITICAL FORMAT REQUIREMENTS:
 - ALWAYS validate that your JSON is syntactically correct before including it
 
 TIPS:
-- "--like" is not a real parameter. Don't ever use it for any p3 tool command.
 - as much as possible, break things into individual steps. Do not pipe commands as this makes it harder to fix later.
 - feel free to redirect outputs to a file if you will need it for later processing
 
@@ -30,15 +29,15 @@ I need to find genomes for Escherichia coli and then extract features from those
 <action>
 [
   {
-    "tool_name": "p3_all_genomes",
-    "parameters": {
+    "name": "p3_all_genomes",
+    "arguments": {
       "species": "Escherichia coli",
       "limit": 5
     }
   },
   {
-    "tool_name": "p3_get_genome_features",
-    "parameters": {
+    "name": "p3_get_genome_features",
+    "arguments": {
       "genome_ids": ["83333.111", "83333.112"],
       "feature_type": "CDS"
     }
@@ -53,8 +52,8 @@ I need to get genome data for Streptomyces with specific attributes and filterin
 <action>
 [
   {
-    "tool_name": "p3_all_genomes",
-    "parameters": {
+    "name": "p3_all_genomes",
+    "arguments": {
       "species": "Streptomyces",
       "attributes": ["genome_id", "genome_name", "contigs", "genome_length"],
       "limit": 10
@@ -70,8 +69,8 @@ I need to get CDS features from specific genomes
 <action>
 [
   {
-    "tool_name": "p3_get_genome_features",
-    "parameters": {
+    "name": "p3_get_genome_features",
+    "arguments": {
       "genome_ids": ["83333.111"],
       "feature_type": "CDS",
       "attributes": ["feature_id", "product", "aa_length"]
@@ -111,15 +110,15 @@ I need to find genomic islands in Klebsiella pneumoniae. This requires two steps
 <action>
 [
   {
-    "tool_name": "p3_all_genomes",
-    "parameters": {
+    "name": "p3_all_genomes",
+    "arguments": {
       "species": "Klebsiella pneumoniae",
       "limit": 5
     }
   },
   {
-    "tool_name": "p3_get_genome_features",
-    "parameters": {
+    "name": "p3_get_genome_features",
+    "arguments": {
       "genome_ids": ["573.82129", "573.81953", "573.82053"],
       "feature_type": "genomic island",
       "attributes": ["feature_id", "genome_id", "product", "start", "end"]
