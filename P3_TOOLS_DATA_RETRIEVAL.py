@@ -1428,5 +1428,124 @@ def batch_process_genomes(genome_ids: List[str],
         'results': results
     }, indent=2)
 
+@mcp.tool()
+def list_available_tools() -> str:
+    """
+    List all available tools in this MCP server
+    
+    Returns:
+        JSON string with list of available tools and their basic descriptions
+    """
+    tools = [
+        {
+            "name": "p3_all_contigs",
+            "description": "Get contig/sequence data using p3-all-contigs",
+            "category": "data_retrieval"
+        },
+        {
+            "name": "p3_all_drugs", 
+            "description": "Get drug/antimicrobial data using p3-all-drugs",
+            "category": "data_retrieval"
+        },
+        {
+            "name": "p3_all_genomes",
+            "description": "Get complete genome records using p3-all-genomes", 
+            "category": "data_retrieval"
+        },
+        {
+            "name": "p3_get_genome_features",
+            "description": "Get genome features using p3-get-genome-features",
+            "category": "data_retrieval"
+        },
+        {
+            "name": "p3_get_feature_data",
+            "description": "Get detailed feature data using p3-get-feature-data",
+            "category": "data_retrieval"
+        },
+        {
+            "name": "p3_get_feature_sequence",
+            "description": "Get sequences for features using p3-get-feature-sequence",
+            "category": "data_retrieval"
+        },
+        {
+            "name": "genome_to_features_pipeline",
+            "description": "Pipeline: Find genomes by species -> Get features",
+            "category": "pipeline"
+        },
+        {
+            "name": "find_genes_by_name_across_species",
+            "description": "Find genes by name within a specific species",
+            "category": "search"
+        },
+        {
+            "name": "batch_process_genomes",
+            "description": "Process large genome lists in manageable batches",
+            "category": "utility"
+        }
+    ]
+    
+    return json.dumps({
+        'success': True,
+        'server_name': 'P3-Tools Data Retrieval Server',
+        'total_tools': len(tools),
+        'tools': tools
+    }, indent=2)
+
+@mcp.tool()
+def get_tool_help(tool_name: str) -> str:
+    """
+    Get detailed help information for a specific tool
+    
+    Args:
+        tool_name: Name of the tool to get help for
+    
+    Returns:
+        JSON string with detailed tool information including parameters and examples
+    """
+    tool_help = {
+        "p3_all_genomes": {
+            "description": "Get complete genome records using p3-all-genomes",
+            "parameters": {
+                "species": {"type": "str", "optional": True, "description": "Species name to filter by"},
+                "strain": {"type": "str", "optional": True, "description": "Strain name to filter by"},
+                "genome_status": {"type": "str", "optional": True, "description": "Genome status filter"},
+                "attributes": {"type": "list", "optional": True, "description": "Specific attributes to return"},
+                "limit": {"type": "int", "optional": True, "default": 1000, "description": "Maximum number of results"}
+            },
+            "example": {"species": "Escherichia coli", "limit": 10}
+        },
+        "p3_get_genome_features": {
+            "description": "Get genome features using p3-get-genome-features",
+            "parameters": {
+                "genome_ids": {"type": "list", "required": True, "description": "List of genome IDs to query"},
+                "feature_type": {"type": "str", "optional": True, "description": "Type of feature (CDS, rRNA, tRNA, etc.)"},
+                "gene_name": {"type": "str", "optional": True, "description": "Specific gene name to search for"},
+                "attributes": {"type": "list", "optional": True, "description": "Specific attributes to return"}
+            },
+            "example": {"genome_ids": ["83333.111"], "feature_type": "CDS"}
+        },
+        "p3_get_feature_data": {
+            "description": "Get detailed feature data using p3-get-feature-data",
+            "parameters": {
+                "feature_ids": {"type": "list", "required": True, "description": "List of feature IDs to query"},
+                "attributes": {"type": "list", "optional": True, "description": "Specific attributes to return"}
+            },
+            "example": {"feature_ids": ["fig|83333.111.peg.1"]}
+        }
+    }
+    
+    if tool_name in tool_help:
+        return json.dumps({
+            'success': True,
+            'tool_name': tool_name,
+            'help': tool_help[tool_name]
+        }, indent=2)
+    else:
+        return json.dumps({
+            'success': False,
+            'error': f'Tool {tool_name} not found in this server',
+            'available_tools': list(tool_help.keys())
+        }, indent=2)
+
 if __name__ == "__main__":
     mcp.run()

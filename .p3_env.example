@@ -1,0 +1,24 @@
+# Copy to .p3_env and edit values
+
+# Environment
+# Activate the conda environment (run: source .p3_env)
+conda activate p3_rl
+
+# API keys
+# OpenAI API Key
+export OPENAI_API_KEY=your_openai_api_key_here
+
+# Together.xyz API Key
+export TOGETHER_API_KEY=your_together_api_key_here
+
+# Firecrawl API Key
+export FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+
+# Training
+MODEL_NAME=Qwen/Qwen2.5-7B
+NUM_GPUS=1
+
+# Data
+DATASET_JSONL=/Users/chia/Documents/ANL/Software/Clark/solr_reasoning/demo.jsonl
+
+

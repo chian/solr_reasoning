@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+t# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -98,6 +98,9 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
+
+# Environment files with API keys
+.p3_env
 #uv.lock
 
 # poetry

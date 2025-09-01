@@ -165,6 +165,13 @@ R1_CONFIG = {
     "temperature": 0.7
 }
 
+# RL instrumentation hooks (do not change existing function signatures)
+# External code may set these to collect per-step events and episode summaries.
+RL_HOOKS: Dict[str, Any] = {
+    "on_step": None,            # callable(dict)
+    "on_episode_end": None,     # callable(dict)
+}
+
 # Configuration for simpler parsing tasks
 OPENAI_CONFIG = {
     "api_key": openai_api_key,
@@ -699,6 +706,18 @@ def process_single_query(user_query: str):
             
             # Add the parsed observation to the action for structured response
             actions[action_index]['action_output'] = result['observation']
+
+            # RL hook: emit per-step event (no try/except)
+            if RL_HOOKS.get("on_step"):
+                RL_HOOKS["on_step"]({
+                    "user_query": user_query,
+                    "step_index": action_index,
+                    "tool_name": action.get("tool_name"),
+                    "parameters": action.get("parameters"),
+                    "status": result.get("status"),
+                    "raw_output": result.get("raw_output"),
+                    "observation": result.get("observation"),
+                })
             
             # Add observation to the llm_response for complete evaluation
             observation_block = f"\n<observation>\n{result['observation']}\n</observation>\n"
@@ -918,6 +937,14 @@ def process_single_query(user_query: str):
         final_solution = generate_final_solution_with_llm(user_query, successful_commands, OPENAI_CONFIG)
         
         structured_response += f"<solution>\n{final_solution}\n</solution>"
+
+        # RL hook: episode end summary
+        if RL_HOOKS.get("on_episode_end"):
+            RL_HOOKS["on_episode_end"]({
+                "user_query": user_query,
+                "final_solution": final_solution,
+                "structured_response": structured_response,
+            })
         
         # Write final result to trace file
         with open(trace_file_path, "a", encoding="utf-8") as f:
