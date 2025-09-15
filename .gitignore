@@ -181,3 +181,16 @@ query_*/
 
 # Ignore all .zip files
 *.zip
+
+# RL training environments and outputs
+rl_test_env/
+trainer_output/
+rl_test_*/
+trainer_*/
+
+# Large model files and checkpoints
+*.bin
+*.safetensors
+*.pt
+*.pth
+checkpoint-*/
